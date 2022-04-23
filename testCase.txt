@@ -1,0 +1,5 @@
+{
+  "userId": "6244a440baeaa0cce9bd252e",
+  "nextSemSeason": "Fall",
+  "selectedElectives": ["COP4020", "CAP4145", "CAP5510", "CAP5725", "CAP4053", "CAP4630"]
+}

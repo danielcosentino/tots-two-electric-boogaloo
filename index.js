@@ -96,7 +96,7 @@ function nerfer(classArr)
 }
 
 // Turns class strings into objects
-async function unNerfer (idList) 
+async function unNerfer(idList) 
 {
   const len = idList.length; 
 
@@ -501,7 +501,7 @@ app.post("/api/verifyUser", async (req, res) =>
     );
 
     res.status(400);
-    return res.json({ data: token });
+    return res.json({ error: "User does not exist" });
   }
 
   // if wrong verification code
@@ -515,7 +515,11 @@ app.post("/api/verifyUser", async (req, res) =>
     );
 
     res.status(400); // double check
-    return res.json({ data: token });
+    return res.json(
+      {
+        userId: user._id,
+        error: "Invalid Verification Code"
+      });
   }
 
   // user has already been verified
@@ -528,7 +532,7 @@ app.post("/api/verifyUser", async (req, res) =>
     );
 
     res.status(400); // double check
-    return res.json({ data: token });
+    return res.json({ error: "User already verified" });
   }
 
   // yoinks scoob, the user has not been verified
@@ -546,7 +550,7 @@ app.post("/api/verifyUser", async (req, res) =>
         );
         // 500 since its a server error
         res.status(500); // double check
-        return res.json({ data: token });
+        return res.json({ error: "User could not be verified" });
       } else {
         // it did work woo yay fun time woo party woo
         const token = jwt.sign(
@@ -557,7 +561,7 @@ app.post("/api/verifyUser", async (req, res) =>
         );
         // 200 since it succeeded
         res.status(200);
-        return res.json({ data: token });
+        return res.json({ userId: userId });
       }
     });
   }
@@ -652,6 +656,156 @@ app.post("/api/resetPassword", async (req, res) =>
       return res.json({ data: token });
     }
   });
+});
+
+app.post("/api/verifyForgotPassword", async(req, res) =>
+{
+  // yoink
+  const { userId, verifCode } = req.body;
+  const user = await User.findById(userId).lean();
+
+  // If userId doesn't match any user - ree
+  if (!user)
+  {
+    const token = jwt.sign(
+      {
+        error: "User does not exist",
+      },
+      process.env.JWT_SECRET
+    );
+
+    res.status(400);
+    return res.json({ data: token });
+  }
+
+  if (user.verified === false)
+  {
+    const token = jwt.sign(
+      {
+        error: "User not verified",
+      },
+      process.env.JWT_SECRET
+    );
+
+    res.status(400);
+    return res.json({ data: token });
+  }
+
+  // if wrong verification code
+  if (user.verifCode != verifCode) {
+    const token = jwt.sign(
+      {
+        userId: user._id,
+        error: "Invalid Verification Code",
+      },
+      process.env.JWT_SECRET
+    );
+
+    res.status(400); // double check
+    return res.json({ data: token });
+  }
+
+  const token = jwt.sign(
+    {
+      userId: userId,
+    },
+    process.env.JWT_SECRET
+  );
+
+  res.status(200);
+  return res.json({ data: token });
+});
+
+// register
+app.post("/api/forgotPasswordEmail", async (req, res) => 
+{
+  const { email } = req.body;
+
+  // if the email is empty or it is not a string
+  if (!email || typeof email !== "string" || email.match(/\S+@\S+\.\S+/) == null)
+  {
+    res.status(400);
+    const token = jwt.sign(
+      {
+        error: "Invalid Email, must be in email format",
+      },
+      process.env.JWT_SECRET
+    );
+    return res.json({ data: token });
+  }
+
+  const verifCode = makeVerifCode();
+
+  // ---------don't make a new user but change the verifCode------------
+  let user = await User.findOne({ email : email }).lean();
+  let userId = user._id;
+
+  User.findByIdAndUpdate(userId, { verifCode: verifCode }, (err, docs) =>
+  {
+    if (err)
+    {
+      const token = jwt.sign(
+        {
+          error: "could not update verifCode",
+        },
+        process.env.JWT_SECRET
+      );
+      // 500 since its a server error
+      res.status(500); // double check
+      return res.json({ data: token });
+    } 
+    else // no error adding verifCode
+    {
+      const token = jwt.sign(
+        {
+          userId: userId,
+        },
+        process.env.JWT_SECRET
+      );
+      res.status(200);
+      return res.json({ data: token });
+    }
+  });
+
+  // this is for email sending stuff
+  const msg = 
+  {
+    // to: email,
+    to: "Top.of.the.schedule.inc.inc@gmail.com",
+    from: "Top.of.the.schedule.inc.inc@gmail.com",
+    subject: "Your Top o' the Schedule Registration Key",
+    text: "Here is your Verification Code: " + verifCode,
+  };
+
+  try {
+    await sgMail.send(msg);
+  } catch (error) {
+    console.error(error);
+
+    if (error.response) 
+      console.error(error.response.body);
+      
+    // DON'T delete the user please and thank you
+    // await User.deleteOne({ _userId: user._id });
+    res.status(500);
+    const token = jwt.sign(
+      {
+        error: "Failed to send message",
+      },
+      process.env.JWT_SECRET
+    );
+    return res.json({ data: token });
+  }
+
+  const token = jwt.sign(
+    {
+      userId: userId,
+    },
+    process.env.JWT_SECRET
+  );
+
+  res.status(200);
+  return res.json({ data: token });
 });
 
 // TODO: this, but after the fifteenth database restructure
@@ -870,21 +1024,6 @@ app.post("/api/generateSchedule", async (req, res) =>
   return res.json({ data: token });
 });
 
-app.post("/api/nonComplex_generateSchedule", async (req, res) =>
-{
-  const
-  {
-    userId = 0,
-    nextSemSeason = "",
-    completedClasses: localCompletedClasses = [],
-    selectedElectives: localSelectedElectives = []
-  } = req.body;
-  let completedClasses = localCompletedClasses;
-  let selectedElectives = localSelectedElectives;
-
-  const hardCodedFirstSemIds = ["GEP1", "GEP3", "MAC2311", "COP2500"];
-});
-
 // The actual generate schedule \/
 app.post("/api/newTest_generateSchedule", async (req, res) => 
 {
@@ -897,10 +1036,13 @@ app.post("/api/newTest_generateSchedule", async (req, res) =>
   } = req.body;
   let completedClasses = localCompletedClasses;
   let selectedElectives = localSelectedElectives;
-  console.log("Selected electives: " + selectedElectives);
+  let initialCompletedClassesLength = completedClasses.length;
+  let initialSeason = nextSemSeason;
+  // console.log("Selected electives: " + selectedElectives);
 
   // TODO: This is literally only being used once do we really need it?
-  const hardCodedFirstSem = ["GEP1", "GEP3", "MAC2311", "COP2500"];
+  const hardCodedFirstSemFallSpring = ["GEP1", "GEP3", "MAC2311", "COP2500"];
+  const hardCodedFirstSemSummer = ["GEP1", "GEP3"];
 
   // Input (required) Variables:
   if (userId === 0) 
@@ -949,13 +1091,15 @@ app.post("/api/newTest_generateSchedule", async (req, res) =>
   coreClasses = nerfer(coreClasses);
   coreClasses.splice(coreClasses.indexOf("MAC1114"), 1);
   coreClasses.splice(coreClasses.indexOf("MAC1105"), 1);
+  completedClasses.push("MAC1114");
+  completedClasses.push("MAC1105");
 
   // remove completed core classes
   for (let c = 0; c < coreClasses.length; c++)
   {
-    if (completedClasses.includes(coreClasses[c].classId))
+    if (completedClasses.includes(coreClasses[c]))
     {
-      coreClasses.splice(c, 1); 
+      coreClasses.splice(c, 1);
     }
   }
 
@@ -1030,7 +1174,6 @@ app.post("/api/newTest_generateSchedule", async (req, res) =>
         // if the prereqs of the current post req are all already contained inside of completed classes
         // if the prereqs of the current post req are a subset of completed classes
         // if the completed classes are a superset of the prereqs of the current post req
-        console.log("ping")
         if (supersetChecker(completedClasses, postRec.preReqs)
               && !completedClasses.includes(postRec.classId))
         {
@@ -1040,18 +1183,42 @@ app.post("/api/newTest_generateSchedule", async (req, res) =>
     }
   }
 
+  // for each class in coreClasses
+    // if the class has no prereqs and it isn't in completedClasses and it isn't in currSemPoss
+      // add it to currSemPoss
+  for (let i = 0; i < coreClasses.length; i++)
+  {
+    let currentClass = await Class.findOne({ classId : coreClasses[i] }).lean();
+    if (!currentClass.preReqs)
+    {
+      currSemPoss.push(currentClass);
+    }
+  }
+
   while (!gradReqFulfilled)
   {
-    console.log("---------------------------------------------\nNew Semester\n---------------------------------------------");
-    if (completedClasses.length == 0)
+    // console.log("---------------------------------------------\nNew Semester\n---------------------------------------------");
+    if (initialCompletedClassesLength == 0 && localSchedule.length == 0)
     {
-      currSemClasses = hardCodedFirstSem;
-      gepCheck[1] = true;
-      gepCheck[3] = true;
-      coreClasses.splice(coreClasses.indexOf("MAC2311"), 1);
-      coreClasses.splice(coreClasses.indexOf("COP2500"), 1);
-      // completedClasses.push("MAC2311");
-      // completedClasses.push("COP2500");
+      if (nextSemSeason == "Fall" || nextSemSeason == "Spring")
+      {
+        currSemClasses = hardCodedFirstSemFallSpring;
+        gepCheck[1] = true;
+        gepCheck[3] = true;
+        coreClasses.splice(coreClasses.indexOf("MAC2311"), 1);
+        coreClasses.splice(coreClasses.indexOf("COP2500"), 1);
+        // completedClasses.push("MAC2311");
+        // completedClasses.push("COP2500");
+      }
+      else // if summer
+      {
+        // TODO: This
+        currSemClasses = hardCodedFirstSemSummer;
+        gepCheck[1] = true;
+        gepCheck[3] = true;
+        currSemPoss = nerfer(currSemPoss);
+        currSemPoss = await unNerfer(currSemPoss);
+      }
     }
     else // if the user has completed classes
     {
@@ -1059,7 +1226,6 @@ app.post("/api/newTest_generateSchedule", async (req, res) =>
 
       currSemPoss = await unNerfer(currSemPoss);
       currSemPoss.sort(classCompare);
-      //console.log("postsort: " + currSemPoss);
 
       if (currSemSeason === "Summer")
       {
@@ -1069,6 +1235,9 @@ app.post("/api/newTest_generateSchedule", async (req, res) =>
         {
           if (!gepCheck[i])
           {
+            // if they're trying to add GEP2 when GEP1 is in the semester
+            if (i == 2 && currSemClasses.indexOf("GEP1") != -1)
+              continue;
             currSemClasses.push("GEP" + i);
             gepCheck[i] = true;
             gepCount++;
@@ -1079,6 +1248,27 @@ app.post("/api/newTest_generateSchedule", async (req, res) =>
           currSemClasses.push("Math/Science Elective");
           mathScienceCount++;
         }
+        for (let i = 0; i < currSemPoss.length; i++)
+        {
+          if (currSemClasses.length < 2)
+          {
+            if ((currSemPoss[i].classId == "COP4934" || currSemPoss[i].classId == "COP4935")
+                && currSemClasses.indexOf(currSemPoss[i].classId) == -1
+                && coreClasses.indexOf(currSemPoss[i].classId) != -1)
+            {
+              currSemClasses.push(currSemPoss[i].classId);
+              let kill = coreClasses.indexOf(currSemPoss[i].classId);
+              if (kill != -1)
+              {
+                coreClasses.splice(kill, 1); 
+              }
+            }
+          }
+          else
+          {
+            break;
+          }
+        }
       }
       // not Summer
       else 
@@ -1088,14 +1278,16 @@ app.post("/api/newTest_generateSchedule", async (req, res) =>
         {
           // Give three core classes
           let coreCount = 0;
-          for (let i = 0; i < currSemPoss.length && coreCount < 2; i++)
+          let currSemClassesLengthIsValid = currSemClasses.length < 4;
+          for (let i = 0; i < currSemPoss.length && (coreCount < 3 || (currSemClasses.indexOf("COT3960") != -1 && coreCount < 4)); i++)
           {
             // Add up to 3 core classes
             // Ignore classes already in the semester
             if (currSemPoss[i].classType == "core" && currSemClasses.indexOf(currSemPoss[i].classId) == -1 && coreClasses.indexOf(currSemPoss[i].classId) != -1)
             {
-              console.log("Adding " + currSemPoss[i].classId);
-              console.log("Lives at " + currSemClasses.indexOf(currSemPoss[i].classId));
+
+              // console.log("Adding " + currSemPoss[i].classId);
+              // console.log("Lives at " + currSemClasses.indexOf(currSemPoss[i].classId));
               currSemClasses.push(currSemPoss[i].classId);
   
               
@@ -1110,53 +1302,84 @@ app.post("/api/newTest_generateSchedule", async (req, res) =>
               {
                 coreCount++;
               }
+
+              // if the foundation exam is in the semester
+              if (currSemClasses.indexOf("COT3960") != -1)
+              {
+                currSemClassesLengthIsValid = currSemClasses.length <= 5;
+                // console.log("This semester has foundation exam");
+                // console.log("coreCount: " + coreCount);
+                // console.log("length of semester is: " + currSemClasses.length);
+                // console.log("currSemClassesLengthIsValid: " + currSemClassesLengthIsValid);
+              }
+              else
+              {
+                currSemClassesLengthIsValid = currSemClasses.length <= 4;
+              }
             }
           }
               
           // Give geps to fill semester
-          for (let i = 1; i < gepCheck.length && currSemClasses.length < 4; i++)
+          for (let i = 1; i < gepCheck.length && (currSemClasses.length < 4 || (currSemClasses.indexOf("COT3960") != -1 && currSemClasses.length < 5)); i++)
           {
             if (!gepCheck[i])
             {
+              // if they're trying to add GEP2 when GEP1 is in the semester
+              if (i == 2 && currSemClasses.indexOf("GEP1") != -1)
+                continue;
               // console.log("This is the part where a GEP is pushed to currSemClasses")
               currSemClasses.push("GEP" + i);
               gepCheck[i] = true;
             }
           }
   
-          // Give math/science electives
-          while (mathScienceCount < maxMathScience && currSemClasses.length < 4)
+          if (completedClasses.indexOf("MAC2312"))
           {
-            currSemClasses.push("Math/Science Elective");
-            mathScienceCount++;
+            // Give math/science electives
+            while (mathScienceCount < maxMathScience && (currSemClasses.length < 4 || (currSemClasses.indexOf("COT3960") != -1 && currSemClasses.length < 5)))
+            {
+              currSemClasses.push("Math/Science Elective");
+              mathScienceCount++;
+            }
           }
   
-          let nerfedCurrSemPoss = nerfer(currSemPoss);
-  
           // Give electives to fill semester
-          for (let i = 0; i < selectedElectives.length && currSemClasses.length < 4; i++)
+          for (let i = 0; i < currSemPoss.length && (currSemClasses.length < 4 || (currSemClasses.indexOf("COT3960") != -1 && currSemClasses.length < 5)) && electiveCount < 6; i++)
           {
+            //console.log("Adding elective " + currSemPoss[i].classId + " maybe");
             // If elective can be taken
-            if (nerfedCurrSemPoss.includes(selectedElectives[i]))
+            if (currSemPoss[i].classType == "elective" && currSemClasses.indexOf(currSemPoss[i].classId) == -1)
             {
-              currSemClasses.push(selectedElectives[i]);
-  
-              let kill = selectedElectives.indexOf(currSemPoss[i]); 
-              if (kill != -1)
-              {
-                selectedElectives.splice(kill, 1); 
-              }
+              //console.log("Yes yay we add " + currSemPoss[i].classId);
+              currSemClasses.push(currSemPoss[i].classId);
+
               electiveCount++;
             }
           }
         }
         else
         {
-          // Give three core classes
-          let coreCount = 0;
-          for (let i = 0; i < currSemPoss.length && coreCount < 4; i++)
+          // Give electives to fill semester
+          let tempEleCount = 0;
+          for (let i = 0; i < currSemPoss.length && currSemClasses.length < 4 && electiveCount < 6 && tempEleCount < 2; i++)
           {
-            // Add up to 3 core classes
+            // console.log("Adding elective " + currSemPoss[i].classId + " maybe");
+            // If elective can be taken
+            if (currSemPoss[i].classType == "elective" && currSemClasses.indexOf(currSemPoss[i].classId) == -1)
+            {
+              // console.log("Yes yay we add " + currSemPoss[i].classId);
+              currSemClasses.push(currSemPoss[i].classId);
+
+              electiveCount++;
+              tempEleCount++;
+            }
+          }
+
+          // Give four core classes
+          let coreCount = 0;
+          let currSemClassesLengthIsValid = currSemClasses.length < 4;
+          for (let i = 0; i < currSemPoss.length && coreCount < 4 && currSemClassesLengthIsValid; i++)
+          {
             // Ignore classes already in the semester
             if (currSemPoss[i].classType == "core" && currSemClasses.indexOf(currSemPoss[i].classId) == -1 && coreClasses.indexOf(currSemPoss[i].classId) != -1)
             {
@@ -1175,6 +1398,16 @@ app.post("/api/newTest_generateSchedule", async (req, res) =>
               {
                 coreCount++;
               }
+              // if the foundation exam is in the semester
+              if (currSemClasses.indexOf("COT3960") != -1)
+              {
+                // console.log("This semester has foundation exam, length of semester is: " + currSemClasses.length);
+                currSemClassesLengthIsValid = currSemClasses.length < 5;
+              }
+              else
+              {
+                currSemClassesLengthIsValid = currSemClasses.length < 4;
+              }
             }
           }
               
@@ -1189,45 +1422,50 @@ app.post("/api/newTest_generateSchedule", async (req, res) =>
             }
           }
 
-          // Give math/science electives
-          while (mathScienceCount < maxMathScience && currSemClasses.length < 4)
+          if (completedClasses.indexOf("MAC2312"))
           {
-            currSemClasses.push("Math/Science Elective");
-            mathScienceCount++;
-          }
-
-          let nerfedCurrSemPoss = nerfer(currSemPoss);
-
-          // Give electives to fill semester
-          for (let i = 0; i < selectedElectives.length && currSemClasses.length < 4; i++)
-          {
-            // If elective can be taken
-            if (nerfedCurrSemPoss.includes(selectedElectives[i]))
+            // Give math/science electives
+            while (mathScienceCount < maxMathScience && currSemClasses.length < 4)
             {
-              currSemClasses.push(selectedElectives[i]);
-
-              let kill = selectedElectives.indexOf(currSemPoss[i]); 
-              if (kill != -1)
-              {
-                selectedElectives.splice(kill, 1); 
-              }
-              electiveCount++;
+              currSemClasses.push("Math/Science Elective");
+              mathScienceCount++;
             }
           }
+
+          // console.log("selectedElectives.length: " + selectedElectives.length);
+          // console.log("Oh no our code: " + currSemClasses.length);
+          //let nerfedCurrSemPoss = nerfer(currSemPoss);
+
         } // End of CS2 check
       } // End of summer check
     } // End of completed classes check
     // Add currSemClasses to the *local* schedule
 
-    localSchedule.push({semester: currSemClasses});
-    console.log("localSchedule:");
+    localSchedule.push({ semester: currSemClasses });
+    // console.log("\n------------------------");
+    // console.log("The almighty schedule:");
     if (localSchedule.length > 15)
     {
       console.log("---It broke again :(");
-      break;
+      res.status(500);
+      return res.json({ error: "it broke again" });
     }
-    for (let i = 0; i < localSchedule.length; i++)
-      console.log("\tSemester " + i + ": " + localSchedule[i].semester);
+    // // Fancy schedule print
+    // for (let i = 0; i < localSchedule.length; i++)
+    // {
+    //   switch (i % 3)
+    //   {
+    //     case 0:
+    //       console.log("\t Fall: \t\t" + localSchedule[i].semester);
+    //       break;
+    //     case 1:
+    //       console.log("\t Spring: \t" + localSchedule[i].semester);
+    //       break;
+    //     case 2:
+    //       console.log("\t Summer: \t" + localSchedule[i].semester + "\n");
+    //       break;
+    //   }
+    // }
 
     // Check if geps are completed
     gepsCompleted = true;
@@ -1242,12 +1480,12 @@ app.post("/api/newTest_generateSchedule", async (req, res) =>
 
     // Requirements are filled
     // GEPs, Core, Electives
-    console.log("Can graduate?")
-    console.log("Number of Geps: " + gepsCompleted);
-    console.log("electiveCount: " + electiveCount);
-    console.log("mathScienceCount: " + mathScienceCount);
-    console.log("coreClasses: " + coreClasses);
-    if (gepsCompleted && electiveCount >= 6 && mathScienceCount >= 4 && coreClasses.length == 0)
+    // console.log("Can graduate?")
+    // console.log("Geps Completed: " + gepCheck);
+    // console.log("electiveCount: " + electiveCount);
+    // console.log("mathScienceCount: " + mathScienceCount);
+    // console.log("coreClasses: " + coreClasses);
+    if (gepsCompleted && electiveCount >= 6 && mathScienceCount >= maxMathScience && coreClasses.length == 0)
     {
       console.log("Can graduate. POGPOGPOGPOGPOGPOGPOGPOGPOG");
       gradReqFulfilled = true;
@@ -1270,15 +1508,37 @@ app.post("/api/newTest_generateSchedule", async (req, res) =>
         else
         {
           // Everything worked perfectly the first time :)
-          const token = jwt.sign(
-            {
-              userId: userId,
-            },
-            process.env.JWT_SECRET
-          );
+          // const token = jwt.sign(
+          //   {
+          //     schedule: localSchedule,
+          //   },
+          //   process.env.JWT_SECRET
+          // );
           // 200 since it succeeded
+          // Fancy schedule print
+          console.log("\n------------------------");
+          console.log("The almighty schedule:");
+          let season = initialSeason;
+          for (let i = 0; i < localSchedule.length; i++)
+          {
+            switch (season)
+            {
+              case "Fall":
+                console.log("\t Fall: \t\t" + localSchedule[i].semester);
+                season = "Spring";
+                break;
+              case "Spring":
+                console.log("\t Spring: \t" + localSchedule[i].semester);
+                season = "Summer";
+                break;
+              case "Summer":
+                console.log("\t Summer: \t" + localSchedule[i].semester + "\n");
+                season = "Fall";
+                break;
+            }
+          }
           res.status(200);
-          return res.json({ data: token });
+          return res.json({ schedule: localSchedule });
         }
       });
     }
@@ -1307,32 +1567,32 @@ app.post("/api/newTest_generateSchedule", async (req, res) =>
         // if (currSemClasses[i].length > 6)
         if (currSemClasses[i].match(classCodePat))
         {
-          console.log("woo ya boi passed the regex: " + currSemClasses[i])
           currClass = await Class.findOne({ classId : currSemClasses[i] }).lean();
           // Put next available classes into currSemPoss
           // TODO: Fix :`)
           if (currClass.postReqs)
           {
-            console.log("Wooooooo postreqs length " + currClass.postReqs.length);
+            // console.log("These are the postReqs of " + currClass.classId + ": " + currClass.postReqs);
             for (let j = 0; j < currClass.postReqs.length; j++) 
             {
+              // console.log("the class " + currClass.classId + " and the postreq "+ j);
               currPostReq = await Class.findOne({ classId : currClass.postReqs[j].class[0] }).lean();
-              console.log("Checking " + currPostReq.classId);
-
+              //console.log("Checking this postReq " + currPostReq.classId);
+              // if (!currPostReq.preReqs)
+              //   console.log("This class, " + currPostReq.classId + " has no prereqs, but it is a postreq of " + currClass.classId + "...?");
               // TODO: if the postreq has all of its prereqs in completed classes
               // this is the same thing as the subsetChecker call from above
               if (supersetChecker(completedClasses, currPostReq.preReqs) &&
                   completedClasses.indexOf(currPostReq.classId) == -1 &&
                   currPostReq.classType != "math/science")
               {
-                console.log("first if");
                 // Throw out any electives we dont want >:(
                 if (selectedElectives.indexOf(currPostReq.classId) == -1 && 
                 currPostReq.classType != "elective")
                 {
 
                   //console.log("This object is an object: " + typeof currSemPoss);
-                  console.log(currPostReq.classId + " is being added yay");
+                  // console.log("\t" + currPostReq.classId + " is being added yay");
                   currSemPoss.push(currPostReq);
                 }
               }
@@ -1342,19 +1602,39 @@ app.post("/api/newTest_generateSchedule", async (req, res) =>
       } // End of semester postreq check
 
       // Check if electives can be added
-      console.log("Sussy error???");
-      console.log("Number: " + selectedElectives.length);
-      console.log("Selected electives: " + selectedElectives);
+      //console.log("Sussy error???");
+      //console.log("Number: " + selectedElectives.length);
+      // console.log("Selected electives: " + selectedElectives);
       for (let i = 0; i < selectedElectives.length; i++)
       {
-        console.log("Sussy ping");
+        //console.log("Sussy ping");
+        //console.log("Number: " + selectedElectives.length);
         currClass = await Class.findOne({ classId : selectedElectives[i] }).lean();
-
-        if (supersetChecker(completedClasses, currClass.preReqs) &&
-            completedClasses.indexOf(currClass.classId) == -1 &&
-            selectedElectives.indexOf(currClass.classId) != -1)
+        
+        if (currClass.preReqs)
         {
-          console.log(currClass.classId + " is being added yay");
+          if (supersetChecker(completedClasses, currClass.preReqs) &&
+              completedClasses.indexOf(currClass.classId) == -1 &&
+              selectedElectives.indexOf(currClass.classId) != -1)
+          {
+            //console.log(currClass.classId + " is being added yay");
+            currSemPoss.push(currClass);
+
+            let kill = selectedElectives.indexOf(currClass.classId);
+            if (kill != -1)
+            {
+              selectedElectives.splice(kill, 1); 
+            }
+
+            if (currClass.classType != "elective")
+            {
+              maxMathScience--;
+            }
+          }
+        }
+        else
+        {
+          // console.log(currClass.classId + " is being added yay");
           currSemPoss.push(currClass);
 
           let kill = selectedElectives.indexOf(currClass.classId);
@@ -1402,7 +1682,7 @@ app.post("/api/newTest_generateSchedule", async (req, res) =>
       
       // Get rid of the STUPID DUPLICATING CLASSES
       currSemPoss = [...new Set(currSemPoss)];
-      console.log("currSemPoss: " + nerfer(currSemPoss));
+      // console.log("currSemPoss after removing dupes: " + nerfer(currSemPoss));
       currSemPoss = await unNerfer(currSemPoss);
 
       // Empty the semester for the next iteration
@@ -1435,7 +1715,7 @@ app.get("/api/passwords", (req, res) =>
 // ------------------------------------------------------------------------------------------------------------------------------------
 
 // The "catchall" handler: for any request that doesn't
-// match one above, send back React's index.html file.
+// match one above, send back React's index.html file. 
 app.get("*", (req, res) => 
 {
   res.sendFile(path.join(__dirname + "/client/build/index.html"));
