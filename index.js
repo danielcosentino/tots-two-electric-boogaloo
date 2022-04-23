@@ -310,16 +310,64 @@ app.post("/api/login", async (req, res) =>
     return res.json({ data: token });
   }
 
+  let userId = user._id;
   if (!user.verified) 
   {
-    res.status(400);
-    const token = jwt.sign(
+    let verifCode = makeVerifCode();
+    User.findByIdAndUpdate(userId, { verifCode: verifCode }, (err, docs) =>
+    {
+      if (err)
       {
-        error: "User not verified",
-      },
-      process.env.JWT_SECRET
-    );
-    return res.json({ data: token });
+        const token = jwt.sign(
+          {
+            error: "could not update verifCode",
+          },
+          process.env.JWT_SECRET
+        );
+        // 500 since its a server error
+        res.status(500); // double check
+        return res.json({ data: token });
+      } 
+      else // no error adding verifCode
+      {
+        const token = jwt.sign(
+          {
+            userId: userId,
+          },
+          process.env.JWT_SECRET
+        );
+        res.status(200);
+        return res.json({ data: token });
+      }
+    });
+    // this is for email sending stuff
+    const msg = 
+    {
+      // to: email,
+      to: "Top.of.the.schedule.inc.inc@gmail.com",
+      from: "Top.of.the.schedule.inc.inc@gmail.com",
+      subject: "Your Top o' the Schedule Registration Key",
+      text: "Here is your Verification Code: " + verifCode,
+    };
+
+    try 
+    {
+      await sgMail.send(msg);
+    } 
+    catch (error) 
+    {
+      console.error(error);
+
+      if (error.response) 
+        console.error(error.response.body);
+        
+      // DON'T delete the user please and thank you
+      // await User.deleteOne({ _userId: user._id });
+      res.status(500);
+      return res.json({ error: "Failed to send message" });
+    }
+    res.status(400);
+    return res.json({ error: "User not verified, email sent" });
   }
 
   if (await bcrypt.compare(password, user.password).catch((err) => 
@@ -567,33 +615,6 @@ app.post("/api/verifyUser", async (req, res) =>
   }
 });
 
-// get Email
-app.post("/api/getEmail", async (req, res) =>
-{
-  const { email } = req.body;
-  const user = await User.findOne({ email }).lean();
-
-  if (!user) {
-    const token = jwt.sign(
-      {
-        error: "User not found",
-      },
-      process.env.JWT_SECRET
-    );
-    res.status(400);
-    return res.json({ data: token });
-  }
-  
-  const token = jwt.sign(
-    {
-      userId: user._id,
-    },
-    process.env.JWT_SECRET
-  );
-  res.status(200);
-  return res.json({ data: token });
-});
-
 // reset password
 app.post("/api/resetPassword", async (req, res) =>
 {
@@ -734,10 +755,17 @@ app.post("/api/forgotPasswordEmail", async (req, res) =>
     return res.json({ data: token });
   }
 
+  let user = await User.findOne({ email : email }).lean();
+
+  if (user.verified === false)
+  {
+    res.status(400);
+    return res.json({ error: "User not verified" });
+  }
+
   const verifCode = makeVerifCode();
 
   // ---------don't make a new user but change the verifCode------------
-  let user = await User.findOne({ email : email }).lean();
   let userId = user._id;
 
   User.findByIdAndUpdate(userId, { verifCode: verifCode }, (err, docs) =>
