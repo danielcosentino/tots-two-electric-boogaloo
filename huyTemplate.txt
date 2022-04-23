@@ -1,0 +1,35 @@
+{
+  jwt: oaiwdbaiwdhbalwdhb.238ybd29803ydn98qydb2.aouydb21839ydb9238ybd298
+  classes: 
+  [ 
+    {
+      classId: "CAP4453",
+      cores:
+      [
+        "COP3503",
+        "MAC2312"
+      ]
+      nonCores:
+      [
+        "FUN1234",
+        "NNY5678"
+      ]
+    },
+    {
+      classId: "CAP4234",
+      cores:
+      [
+        "COP6546",
+        "MAC2345"
+      ]
+      nonCores:
+      [
+        "FUN1244",
+        "ABC6653"
+      ]
+    },
+  ]
+}
+
+
+completedClasses: ["FUN1244", "ABC6653", "ABC6653", "ABC6653", "ABC6653", "ABC6653", "ABC6653", "ABC6653"]

@@ -1007,53 +1007,53 @@ app.post("/api/getSchedule", async (req, res) =>
   return res.json({ data: "This endpoint does not work yet :(" });
 });
 
-app.post("/api/generateSchedule", async (req, res) =>
-{
+// app.post("/api/generateSchedule", async (req, res) =>
+// {
 
-  const { userId } = req.body;
+//   const { userId } = req.body;
 
-  // Grab user
-  let user = await User.findById(userId).lean();
+//   // Grab user
+//   let user = await User.findById(userId).lean();
 
-  if (!user)
-  {
-    const token = jwt.sign(
-      {
-        error: "No user found",
-      },
-      process.env.JWT_SECRET
-    );
-    res.status(400);
-    return res.json({ data: token });
-  }
+//   if (!user)
+//   {
+//     const token = jwt.sign(
+//       {
+//         error: "No user found",
+//       },
+//       process.env.JWT_SECRET
+//     );
+//     res.status(400);
+//     return res.json({ data: token });
+//   }
 
-  console.log("AAAAAAAAAAAAAAAA");
-  newSchedule = [
-    { semester: ["ENC1101", "SPC1016", "MAC2311", "COP2500"] },
-    { semester: ["ENC1102", "COP3223", "BSC2010", "PHY2048"] }
-  ];
+//   console.log("AAAAAAAAAAAAAAAA");
+//   newSchedule = [
+//     { semester: ["ENC1101", "SPC1016", "MAC2311", "COP2500"] },
+//     { semester: ["ENC1102", "COP3223", "BSC2010", "PHY2048"] }
+//   ];
 
 
-  console.log(newSchedule.type);
+//   console.log(newSchedule.type);
 
-  // newSchedule = JSON.stringify(newSchedule);
+//   // newSchedule = JSON.stringify(newSchedule);
 
-  await User.findByIdAndUpdate( userId, { schedule: newSchedule });
-  console.log("Updated");
-  const token = jwt.sign(
-    {
-      // Daniel plzzzzzzzzzzzz give schedule to this user \/\/\/\/\/ -Gaby (z emphasis by Christine)
-      // 624fa445adb7d5549e6f78d7
-      schedule: newSchedule
-    },
-    process.env.JWT_SECRET
-  );
-  res.status(200);
-  return res.json({ data: token });
-});
+//   await User.findByIdAndUpdate( userId, { schedule: newSchedule });
+//   console.log("Updated");
+//   const token = jwt.sign(
+//     {
+//       // Daniel plzzzzzzzzzzzz give schedule to this user \/\/\/\/\/ -Gaby (z emphasis by Christine)
+//       // 624fa445adb7d5549e6f78d7
+//       schedule: newSchedule
+//     },
+//     process.env.JWT_SECRET
+//   );
+//   res.status(200);
+//   return res.json({ data: token });
+// });
 
 // The actual generate schedule \/
-app.post("/api/newTest_generateSchedule", async (req, res) => 
+app.post("/api/generateSchedule", async (req, res) => 
 {
   const
   {
