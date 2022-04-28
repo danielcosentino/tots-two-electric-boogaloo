@@ -4,6 +4,7 @@ import { Link } from "react-router-dom";
 import logo from "../Images/ucf-logo.png";
 import "bootstrap/dist/css/bootstrap.css";
 import validator from "validator";
+import "./styles.css";
 
 function Login() {
   var loginEmail;
@@ -16,26 +17,26 @@ function Login() {
   const [passwordMessage, setPasswordMessage] = useState("");
   const [message, setMessage] = useState("");
 
-  function validateEmail() {
-    if (!loginEmail.value) {
+  function validateEmail(email) {
+    if (!email.value) {
       setEmailMessage("Please enter an email.");
       return false;
     }
 
-    if (!validator.isEmail(loginEmail.value)) {
+    if (!validator.isEmail(email.value)) {
       setEmailMessage("Email is not valid!");
       return false;
     }
     return true;
   }
 
-  function validatePassword() {
-    if (!loginPassword.value) {
+  function validatePassword(password) {
+    if (!password.value) {
       setPasswordMessage("Please enter a password.");
       return false;
     }
 
-    if (loginPassword.value.length < 6) {
+    if (password.value.length < 6) {
       setPasswordMessage("Password should be 6 characters long.");
       return false;
     }
@@ -49,8 +50,8 @@ function Login() {
     setPasswordMessage("");
     setMessage("");
 
-    validationEmail = validateEmail();
-    validationPassword = validatePassword();
+    validationEmail = validateEmail(loginEmail);
+    validationPassword = validatePassword(loginPassword);
 
     if (!validationEmail || !validationPassword) {
       return;
@@ -62,35 +63,61 @@ function Login() {
     console.log(js);
 
     try {
-      const response = await fetch(
-        "https://group1-tots-mern.herokuapp.com/api/login",
+      fetch(
+        // process.env.REACT_APP_API_URL + "/api/verifyUser",
+        process.env.REACT_APP_API_URL + "/api/login",
         {
           method: "POST",
           body: js,
           headers: { "Content-Type": "application/json" },
         }
-      );
+      ).then(async res=> {
 
-      var resp = JSON.parse(await response.text());
+        let body = await res.json();
 
-      console.log(resp);
-
-      var data = jwt(resp.data);
-
-      console.log(data);
-
-      if (data.error) {
-        setMessage(data.error);
-        if (data.error === "User not verified") {
-          window.location.href = "/verifyRegisterUser";
+        if (!body.verified) {
+          setMessage("user not verfied")
         }
-      } else {
-        var user = {
-          id: data.id,
-        };
-        localStorage.setItem("user_data", JSON.stringify(user));
-        setMessage("You have logged in.");
-      }
+        else {
+          let token = res.headers.get('X-Token');
+
+          localStorage.setItem('token', token);
+  
+          setMessage("You have logged in.");
+        }
+      }).catch(err => {
+        setMessage(err)
+      });
+
+      // logout
+      // localStorage.removeItem("token")
+
+
+      // let resp = JSON.parse(await response.text());
+      // let resp = await response.json();
+
+      // console.log(response.headers.get("X-Token"));
+
+    
+
+
+      // var data = jwt(resp.data);
+
+      // console.log(data);
+
+      // var user = {
+      //   id: data.userId,
+      // };
+      // localStorage.setItem("user_data", JSON.stringify(user));
+
+      // if (data.error) {
+      //   setMessage(data.error);
+      //   if (data.error === "User not verified") {
+      //     setMessage(data.error);
+      //   }
+      // } else {
+      //   setMessage("You have logged in.");
+      // }
     } catch (e) {
       console.log(e.toString());
       return;
@@ -100,42 +127,21 @@ function Login() {
   return (
     <div id="loginDiv" className="container-fluid text-center pt-2">
       <div id="logoDiv">
-        <img
-          src={logo}
-          alt="ucf-logo"
-          style={{
-            borderRadius: 25,
-            width: "10%",
-          }}
-        />
+        <img src={logo} alt="ucf-logo" className="logo" />
       </div>
-      <h1
-        id="totsHeader"
-        style={{
-          color: "#FFC904",
-        }}
-      >
+      <h1 id="totsHeader" className="header-logo">
         TOP OF THE SCHEDULE
       </h1>
       <h1 id="inner-title">Login</h1>
       <form onSubmit={doLogin}>
-        <label
-          htmlFor="loginEmail"
-          style={{
-            fontSize: 24,
-          }}
-        >
+        <label htmlFor="loginEmail" className="fonts">
           Email
         </label>
         <br />
         <input
           type="text"
           id="loginEmail"
-          className="border-4 w-50 p-3"
-          style={{
-            borderColor: "#FFC904",
-            borderRadius: 25,
-          }}
+          className="border-4 w-25 p-3 inputs"
           placeholder="Email"
           ref={(c) => (loginEmail = c)}
         />
@@ -144,12 +150,7 @@ function Login() {
           {emailMessage}
         </span>
         <br />
-        <label
-          htmlFor="loginPassword"
-          style={{
-            fontSize: 24,
-          }}
-        >
+        <label htmlFor="loginPassword" className="fonts">
           Password
         </label>
         <br />
@@ -157,11 +158,7 @@ function Login() {
           type="password"
           id="loginPassword"
           placeholder="Password"
-          className="border-4 w-50 p-3"
-          style={{
-            borderColor: "#FFC904",
-            borderRadius: 25,
-          }}
+          className="border-4 w-25 p-3 inputs"
           ref={(c) => (loginPassword = c)}
         />
         <br />
@@ -180,22 +177,12 @@ function Login() {
         <button
           id="loginButton"
           type="submit"
-          className="p-3 w-25 m-3"
-          style={{
-            borderRadius: 25,
-            backgroundColor: "#FFC904",
-            fontSize: 24,
-          }}
+          className="p-3 w-25 m-3 regular-button"
           onClick={doLogin}
         >
           Login
         </button>
-        <div
-          id="redirectRegister"
-          style={{
-            fontSize: 24,
-          }}
-        >
+        <div id="redirectRegister" className="fonts">
           Don't have an acccount?
           <span id="Register" style={{ textDecoration: "underline" }}>
             <Link to="/register">Register</Link>

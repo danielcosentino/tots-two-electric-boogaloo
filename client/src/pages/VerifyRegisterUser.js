@@ -1,12 +1,15 @@
 import React, { useState } from "react";
 import logo from "../Images/ucf-logo.png";
-import { Link, useHistory } from "react-router-dom";
+import { useHistory } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.css";
+import jwt from "jwt-decode";
 
 function VerifyRegisterUser() {
   var verificationCode;
   var validationVerificationCode;
-  let user = localStorage.getItem("user");
+  let _user = localStorage.getItem("user_data");
+  let user = JSON.parse(_user);
+  console.log(user.id);
 
   const [message, setMessage] = useState("");
 
@@ -33,7 +36,41 @@ function VerifyRegisterUser() {
     if (!validationVerificationCode) {
       return;
     }
-    window.location.href = "/";
+
+    let obj = { userId: user.id, verifCode: verificationCode.value };
+    let js = JSON.stringify(obj);
+
+    console.log(js);
+
+    try {
+      const response = await fetch(
+        process.env.REACT_APP_API_URL + "/api/verifyUser",
+        {
+          method: "POST",
+          body: js,
+          headers: { "Content-type": "application/json" },
+        }
+      );
+
+      let data = JSON.parse(await response.text());
+
+      console.log(data);
+
+      if (data.error) {
+        setMessage(data.error);
+      } else {
+        let user = {
+          id: data.userId,
+        };
+        localStorage.clear();
+        localStorage.setItem("user_data", JSON.stringify(user));
+        console.log(JSON.parse(localStorage.getItem("user_data")).id);
+        window.location.href = "/";
+      }
+    } catch (e) {
+      console.log(e.toString());
+      return;
+    }
   };
 
   return (
@@ -42,7 +79,9 @@ function VerifyRegisterUser() {
         className="navbar container-fluid"
         style={{ backgroundColor: "#FFC904" }}
       >
-        <Link onClick={() => history.goBack()}>Back</Link>
+        <button className="back-button" onClick={() => history.goBack()}>
+          Back
+        </button>
       </nav>
       <div id="contentDiv" className="container-fluid text-center p-4">
         <div id="logoDiv">
@@ -77,7 +116,7 @@ function VerifyRegisterUser() {
           <input
             type="password"
             id="verificationCode"
-            className="border-4 w-50 p-3"
+            className="border-4 w-25 p-3"
             style={{
               borderColor: "#FFC904",
               borderRadius: 25,

@@ -4,6 +4,7 @@ import logo from "../Images/ucf-logo.png";
 import { Link } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.css";
 import validator from "validator";
+import "./styles.css";
 
 function Register() {
   var registerEmail;
@@ -89,7 +90,7 @@ function Register() {
 
     try {
       const response = await fetch(
-        "https://group1-tots-mern.herokuapp.com/api/register",
+        process.env.REACT_APP_API_URL + "/api/register",
         {
           method: "POST",
           body: js,
@@ -99,19 +100,16 @@ function Register() {
 
       var resp = JSON.parse(await response.text());
 
-      console.log(resp);
-
       var data = jwt(resp.data);
-
-      console.log(data);
 
       if (data.error) {
         setMessage(data.error);
       } else {
         var user = {
-          id: data.id,
+          id: data.userId,
         };
-        localStorage.setItem("user", JSON.stringify(user));
+        localStorage.clear();
+        localStorage.setItem("user_data", JSON.stringify(user));
         setMessage("");
         window.location.href = "/verifyRegisterUser";
       }
@@ -124,42 +122,21 @@ function Register() {
   return (
     <div id="registerDiv" className="container-fluid text-center pt-2">
       <div id="logoDiv">
-        <img
-          src={logo}
-          alt="ucf-logo"
-          style={{
-            borderRadius: 25,
-            width: "10%",
-          }}
-        />
+        <img src={logo} alt="ucf-logo" className="logo" />
       </div>
-      <h1
-        id="totsHeader"
-        style={{
-          color: "#FFC904",
-        }}
-      >
+      <h1 id="totsHeader" className="header-logo">
         TOP OF THE SCHEDULE
       </h1>
       <h1 id="inner-title">Register</h1>
       <form onSubmit={doRegister}>
-        <label
-          htmlFor="registerEmail"
-          style={{
-            fontSize: 24,
-          }}
-        >
+        <label htmlFor="registerEmail" className="fonts">
           Email
         </label>
         <br />
         <input
           type="text"
           id="registerEmail"
-          className="border-4 w-50 p-3"
-          style={{
-            borderColor: "#FFC904",
-            borderRadius: 25,
-          }}
+          className="border-4 w-25 p-3 inputs"
           placeholder="Email"
           ref={(c) => (registerEmail = c)}
         />
@@ -168,23 +145,14 @@ function Register() {
           {emailMessage}
         </span>
         <br />
-        <label
-          htmlFor="registerPassword"
-          style={{
-            fontSize: 24,
-          }}
-        >
+        <label htmlFor="registerPassword" className="fonts">
           Password
         </label>
         <br />
         <input
           type="password"
           id="registerPassword"
-          className="border-4 w-50 p-3"
-          style={{
-            borderColor: "#FFC904",
-            borderRadius: 25,
-          }}
+          className="border-4 w-25 p-3 inputs"
           placeholder="Password"
           ref={(c) => (registerPassword = c)}
         />
@@ -193,23 +161,14 @@ function Register() {
           {passwordMessage}
         </span>
         <br />
-        <label
-          htmlFor="registerConfirmPassword"
-          style={{
-            fontSize: 24,
-          }}
-        >
+        <label htmlFor="registerConfirmPassword" className="fonts">
           Confirm Password
         </label>
         <br />
         <input
           type="password"
           id="registerConfirmPassword"
-          className="border-4 w-50 p-3"
-          style={{
-            borderColor: "#FFC904",
-            borderRadius: 25,
-          }}
+          className="border-4 w-25 p-3 inputs"
           placeholder="Confirm Password"
           ref={(c) => (registerConfirmPassword = c)}
         />
@@ -221,22 +180,12 @@ function Register() {
         <button
           id="registerButton"
           type="submit"
-          className="p-3 w-25 m-3"
-          style={{
-            borderRadius: 25,
-            backgroundColor: "#FFC904",
-            fontSize: 24,
-          }}
+          className="p-3 w-25 m-3 regular-button"
           onClick={doRegister}
         >
           Register
         </button>
-        <div
-          id="redirectLogin"
-          style={{
-            fontSize: 24,
-          }}
-        >
+        <div id="redirectLogin" className="fonts">
           Already have an acccount?
           <span id="Login" style={{ textDecoration: "underline" }}>
             <Link to="/">Login</Link>

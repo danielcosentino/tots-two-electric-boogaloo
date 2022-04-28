@@ -31,7 +31,9 @@ mongoose.connect(process.env.MONGO_CONNECTION_STRING,
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
-app.use(cors());
+app.use(cors({
+  exposedHeaders: ['content-type', 'X-Token']
+}));
 app.use(bodyParser.json());
 app.use(
   session(
@@ -91,6 +93,16 @@ function nerfer(classArr)
   let idsOnly = []; 
   for (let i = 0; i < classArr.length; i++) 
     idsOnly.push(classArr[i].classId);
+
+  return idsOnly; 
+}
+
+
+function electiveNerfer(classArr) 
+{
+  let idsOnly = []; 
+  for (let i = 0; i < classArr.length; i++) 
+    idsOnly.push({ classId: classArr[i].classId, className: classArr[i].className });
 
   return idsOnly; 
 }
@@ -292,6 +304,13 @@ function gepOptimizer(currentClass, currSemPoss, gepCheck, stateCoreCompleted, g
 // endpoint prison
 // ------------------------------------------------------------------------------------------------------------------------------------
 
+//  ______      _     _ _       ______            _            
+//  | ___ \    | |   | (_)      | ___ \          | |           
+//  | |_/ /   _| |__ | |_  ___  | |_/ /___  _   _| |_ ___  ___ 
+//  |  __/ | | | '_ \| | |/ __| |    // _ \| | | | __/ _ \/ __|
+//  | |  | |_| | |_) | | | (__  | |\ \ (_) | |_| | ||  __/\__ \
+//  \_|   \__,_|_.__/|_|_|\___| \_| \_\___/ \__,_|\__\___||___/
+
 // login
 app.post("/api/login", async (req, res) => 
 {
@@ -301,50 +320,32 @@ app.post("/api/login", async (req, res) =>
   if (!user) 
   {
     res.status(400);
-    const token = jwt.sign(
-      {
-        error: "Invalid email/password",
-      },
-      process.env.JWT_SECRET
-    );
-    return res.json({ data: token });
+    return res.json({ error: "Invalid email/password" });
   }
 
   let userId = user._id;
-  if (!user.verified) 
+  if (!user.verified)
   {
     let verifCode = makeVerifCode();
     User.findByIdAndUpdate(userId, { verifCode: verifCode }, (err, docs) =>
     {
       if (err)
       {
-        const token = jwt.sign(
-          {
-            error: "could not update verifCode",
-          },
-          process.env.JWT_SECRET
-        );
         // 500 since its a server error
         res.status(500); // double check
-        return res.json({ data: token });
+        return res.json({ error: "could not update verifCode"});
       } 
       else // no error adding verifCode
       {
-        const token = jwt.sign(
-          {
-            userId: userId,
-          },
-          process.env.JWT_SECRET
-        );
         res.status(200);
-        return res.json({ data: token });
+        return res.json({ userId: userId });
       }
     });
     // this is for email sending stuff
     const msg = 
     {
-      // to: email,
-      to: "Top.of.the.schedule.inc.inc@gmail.com",
+      to: email,
+      // to: "Top.of.the.schedule.inc.inc@gmail.com",
       from: "Top.of.the.schedule.inc.inc@gmail.com",
       subject: "Your Top o' the Schedule Registration Key",
       text: "Here is your Verification Code: " + verifCode,
@@ -361,8 +362,6 @@ app.post("/api/login", async (req, res) =>
       if (error.response) 
         console.error(error.response.body);
         
-      // DON'T delete the user please and thank you
-      // await User.deleteOne({ _userId: user._id });
       res.status(500);
       return res.json({ error: "Failed to send message" });
     }
@@ -372,38 +371,26 @@ app.post("/api/login", async (req, res) =>
 
   if (await bcrypt.compare(password, user.password).catch((err) => 
     {
-      res.status(400);
-      const token = jwt.sign(
-        {
-          error: "Failed to hash password",
-        },
-        process.env.JWT_SECRET
-      );
-      return res.json({ data: token });
-    })
-  )
+      res.status(500);
+      return res.json({ error: "Failed to hash password" });
+    }))
   {
     // email password is successful
-    res.status(200);
     const token = jwt.sign(
       {
-        userId: user._id,
+        userId: userId,
       },
-      process.env.JWT_SECRET
+      process.env.JWT_SECRET,
     );
-    return res.json({ data: token });
+    res.set("X-Token", token);
+    res.status(200);
+    return res.json({ verified: user.verified, schedule: user.schedule });
   }
   // password is incorrect
   else 
   {
     res.status(400);
-    const token = jwt.sign(
-      {
-        error: "Invalid email/password",
-      },
-      process.env.JWT_SECRET
-    );
-    return res.json({ data: token });
+    return res.json({ error: "Invalid email/password" });
   }
 
   res.status(500);
@@ -425,39 +412,21 @@ app.post("/api/register", async (req, res) =>
   if (!email || typeof email !== "string" || email.match(/\S+@\S+\.\S+/) == null)
   {
     res.status(400);
-    const token = jwt.sign(
-      {
-        error: "Invalid Email, must be in email format",
-      },
-      process.env.JWT_SECRET
-    );
-    return res.json({ data: token });
+    return res.json({ error: "Invalid Email, must be in email format" });
   }
 
   // if the password is empty or it is not a string
   if (!plainTextPassword || typeof plainTextPassword !== "string") 
   {
     res.status(400);
-    const token = jwt.sign(
-      {
-        error: "Invalid Password",
-      },
-      process.env.JWT_SECRET
-    );
-    return res.json({ data: token });
+    return res.json({ error: "Invalid Password" });
   }
 
   // if the password is not the correct length
   if (plainTextPassword.length <= 5)
   {
     res.status(400);
-    const token = jwt.sign(
-      {
-        error: "Password too small",
-      },
-      process.env.JWT_SECRET
-    );
-    return res.json({ data: token });
+    return res.json({ error: "Password too small" });
   }
 
   const password = await bcrypt.hash(plainTextPassword, 10);
@@ -479,8 +448,8 @@ app.post("/api/register", async (req, res) =>
     // this is for email sending stuff
     const msg = 
     {
-      // to: email
-      to: "Top.of.the.schedule.inc.inc@gmail.com",
+      to: email,
+      // to: "Top.of.the.schedule.inc.inc@gmail.com",
       from: "Top.of.the.schedule.inc.inc@gmail.com",
       subject: "Your Top o' the Schedule Registration Key",
       text: "Here is your Verification Code: " + verifCode,
@@ -497,247 +466,33 @@ app.post("/api/register", async (req, res) =>
       // delete the user
       await User.deleteOne({ _userId: user._id });
       res.status(500);
-      const token = jwt.sign(
-        {
-          error: "Failed to create user",
-        },
-        process.env.JWT_SECRET
-      );
-      return res.json({ data: token });
+      return res.json({ error: "Failed to create user" });
     }
 
+    // email password is successful
     const token = jwt.sign(
       {
         userId: user._id,
       },
       process.env.JWT_SECRET
     );
-
+    res.set("X-Token", token);
     res.status(200);
-    res.json({ data: token });
-  } catch (error) {
-    if (error.code === 11000) {
+    return res.json({ userId: user._id });
+  }
+  catch (error)
+  {
+    if (error.code === 11000)
+    {
       // duplicate key
-      const token = jwt.sign(
-        {
-          error: "Email already in use",
-        },
-        process.env.JWT_SECRET
-      );
       res.status(400);
-      return res.json({ data: token });
+      return res.json({ error: "Email already in use" });
     }
     throw error;
   }
-  res.status(200);
 });
 
-// Verify User
-app.post("/api/verifyUser", async (req, res) =>
-{
-  // yoink
-  const { userId, verifCode } = req.body;
-  const user = await User.findById(userId).lean();
-
-  // If userId doesn't match any user - ree
-  if (!user) {
-    const token = jwt.sign(
-      {
-        error: "User does not exist",
-      },
-      process.env.JWT_SECRET
-    );
-
-    res.status(400);
-    return res.json({ error: "User does not exist" });
-  }
-
-  // if wrong verification code
-  if (user.verifCode != verifCode) {
-    const token = jwt.sign(
-      {
-        userId: user._id,
-        error: "Invalid Verification Code",
-      },
-      process.env.JWT_SECRET
-    );
-
-    res.status(400); // double check
-    return res.json(
-      {
-        userId: user._id,
-        error: "Invalid Verification Code"
-      });
-  }
-
-  // user has already been verified
-  if (user.verified) {
-    const token = jwt.sign(
-      {
-        error: "User already verified",
-      },
-      process.env.JWT_SECRET
-    );
-
-    res.status(400); // double check
-    return res.json({ error: "User already verified" });
-  }
-
-  // yoinks scoob, the user has not been verified
-  if (!user.verified) {
-    // all good raggy
-    // B) swag
-    // TEST THIS
-    User.findByIdAndUpdate(userId, { verified: true }, (err, docs) => {
-      if (err) {
-        const token = jwt.sign(
-          {
-            error: "User could not be verified",
-          },
-          process.env.JWT_SECRET
-        );
-        // 500 since its a server error
-        res.status(500); // double check
-        return res.json({ error: "User could not be verified" });
-      } else {
-        // it did work woo yay fun time woo party woo
-        const token = jwt.sign(
-          {
-            userId: userId,
-          },
-          process.env.JWT_SECRET
-        );
-        // 200 since it succeeded
-        res.status(200);
-        return res.json({ userId: userId });
-      }
-    });
-  }
-});
-
-// reset password
-app.post("/api/resetPassword", async (req, res) =>
-{
-  // yoink
-  const { userId, password: plainTextPassword } = req.body;
-  const user = await User.findOne({ userId }).lean();
-
-  // if the user was not found
-  if (!user) 
-  {
-    const token = jwt.sign(
-      {
-        error: "User not found",
-      },
-      process.env.JWT_SECRET
-    );
-    res.status(400);
-    return res.json({ data: token });
-  }
-
-  // yoinks scoob, the user has not been verified
-  if (!user.verified) 
-  {
-    const token = jwt.sign(
-      {
-        error: "User not verified",
-      },
-      process.env.JWT_SECRET
-    );
-    res.status(400);
-    return res.json({ data: token });
-  }
-  
-  // change the password in the database
-  const hashedPassword = await bcrypt.hash(plainTextPassword, 10);
-  User.findByIdAndUpdate(userId, { password: hashedPassword }, (err, docs) => 
-  {
-    if (err) 
-    {
-      // Could not update user
-      const token = jwt.sign(
-        {
-          error: "Could not update user",
-        },
-        process.env.JWT_SECRET
-      );
-      res.status(500);
-      return res.json({ data: token });
-    } 
-    else
-    {
-      // updated user correctly
-      const token = jwt.sign(
-        {
-          userId: userId,
-        },
-        process.env.JWT_SECRET
-      );
-      res.status(200);
-      return res.json({ data: token });
-    }
-  });
-});
-
-app.post("/api/verifyForgotPassword", async(req, res) =>
-{
-  // yoink
-  const { userId, verifCode } = req.body;
-  const user = await User.findById(userId).lean();
-
-  // If userId doesn't match any user - ree
-  if (!user)
-  {
-    const token = jwt.sign(
-      {
-        error: "User does not exist",
-      },
-      process.env.JWT_SECRET
-    );
-
-    res.status(400);
-    return res.json({ data: token });
-  }
-
-  if (user.verified === false)
-  {
-    const token = jwt.sign(
-      {
-        error: "User not verified",
-      },
-      process.env.JWT_SECRET
-    );
-
-    res.status(400);
-    return res.json({ data: token });
-  }
-
-  // if wrong verification code
-  if (user.verifCode != verifCode) {
-    const token = jwt.sign(
-      {
-        userId: user._id,
-        error: "Invalid Verification Code",
-      },
-      process.env.JWT_SECRET
-    );
-
-    res.status(400); // double check
-    return res.json({ data: token });
-  }
-
-  const token = jwt.sign(
-    {
-      userId: userId,
-    },
-    process.env.JWT_SECRET
-  );
-
-  res.status(200);
-  return res.json({ data: token });
-});
-
-// register
+// this is an endpoint
 app.post("/api/forgotPasswordEmail", async (req, res) => 
 {
   const { email } = req.body;
@@ -746,13 +501,7 @@ app.post("/api/forgotPasswordEmail", async (req, res) =>
   if (!email || typeof email !== "string" || email.match(/\S+@\S+\.\S+/) == null)
   {
     res.status(400);
-    const token = jwt.sign(
-      {
-        error: "Invalid Email, must be in email format",
-      },
-      process.env.JWT_SECRET
-    );
-    return res.json({ data: token });
+    return res.json({ error: "Invalid Email, must be in email format" });
   }
 
   let user = await User.findOne({ email : email }).lean();
@@ -772,34 +521,22 @@ app.post("/api/forgotPasswordEmail", async (req, res) =>
   {
     if (err)
     {
-      const token = jwt.sign(
-        {
-          error: "could not update verifCode",
-        },
-        process.env.JWT_SECRET
-      );
       // 500 since its a server error
       res.status(500); // double check
-      return res.json({ data: token });
+      return res.json({ error: "could not update verifCode" });
     } 
     else // no error adding verifCode
     {
-      const token = jwt.sign(
-        {
-          userId: userId,
-        },
-        process.env.JWT_SECRET
-      );
       res.status(200);
-      return res.json({ data: token });
+      return res.json({ userId: userIdn });
     }
   });
 
   // this is for email sending stuff
   const msg = 
   {
-    // to: email,
-    to: "Top.of.the.schedule.inc.inc@gmail.com",
+    to: email,
+    // to: "Top.of.the.schedule.inc.inc@gmail.com",
     from: "Top.of.the.schedule.inc.inc@gmail.com",
     subject: "Your Top o' the Schedule Registration Key",
     text: "Here is your Verification Code: " + verifCode,
@@ -816,24 +553,185 @@ app.post("/api/forgotPasswordEmail", async (req, res) =>
     // DON'T delete the user please and thank you
     // await User.deleteOne({ _userId: user._id });
     res.status(500);
-    const token = jwt.sign(
-      {
-        error: "Failed to send message",
-      },
-      process.env.JWT_SECRET
-    );
-    return res.json({ data: token });
+    return res.json({ error: "Failed to send message" });
+  }
+  res.status(200);
+  return res.json({ userId: userId });
+});
+
+//getElectives + with each prerecs
+app.get("/api/getElectives", async (req, res) =>
+{
+  // find a
+  const classObj = await Class.find({ classType: "elective" }).lean();
+  let electives = electiveNerfer( classObj );
+
+  try {
+    res.status(200);
+    return res.json({ electives: electives });
+  } catch {
+    res.status(500);
+    return res.json({ error: "Something Bad Happened" });
+  }
+});
+
+//  ______     _            _        ______            _            
+//  | ___ \   (_)          | |       | ___ \          | |           
+//  | |_/ / __ ___   ____ _| |_ ___  | |_/ /___  _   _| |_ ___  ___ 
+//  |  __/ '__| \ \ / / _` | __/ _ \ |    // _ \| | | | __/ _ \/ __|
+//  | |  | |  | |\ V / (_| | ||  __/ | |\ \ (_) | |_| | ||  __/\__ \
+//  \_|  |_|  |_| \_/ \__,_|\__\___| \_| \_\___/ \__,_|\__\___||___/
+
+// check to ensure the token is valid
+app.use((req, res, next) => 
+{
+  let token = req.get("Authorization");
+  try
+  {
+    req.token = jwt.verify(token, process.env.JWT_SECRET);
+  }
+  catch (err)
+  {
+    res.status(400);
+    return res.json({ error: "Unauthorized"});
+  }
+  next();
+});
+
+// Verify User
+app.post("/api/verifyUser", async (req, res) =>
+{
+
+  console.log(req.token);
+
+  // yoink
+  const { verifCode } = req.body;
+  const userId = req.token.userId;
+
+  const user = await User.findById(userId).lean();
+
+  // If userId doesn't match any user - ree
+  if (!user) {
+    res.status(400);
+    return res.json({ error: "User does not exist" });
   }
 
-  const token = jwt.sign(
-    {
-      userId: userId,
-    },
-    process.env.JWT_SECRET
-  );
+  // if wrong verification code
+  if (user.verifCode != verifCode) {
+    res.status(400); // double check
+    return res.json(
+      {
+        userId: userId,
+        error: "Invalid Verification Code"
+      });
+  }
 
+  // user has already been verified
+  if (user.verified) {
+    res.status(400); // double check
+    return res.json({ error: "User already verified" });
+  }
+
+  // yoinks scoob, the user has not been verified
+  if (!user.verified) {
+    // all good raggy
+    // B) swag
+    // TEST THIS
+    User.findByIdAndUpdate(userId, { verified: true }, (err, docs) => {
+      if (err) {
+        // 500 since its a server error
+        res.status(500); // double check
+        return res.json({ error: "User could not be verified" });
+      } else {
+        // it did work woo yay fun time woo party woo
+        // 200 since it succeeded
+        res.status(200);
+        return res.json({ userId: userId });
+      }
+    });
+  }
+});
+
+// reset password
+app.post("/api/resetPassword", async (req, res) =>
+{
+  // yoink
+  const { userId, password: plainTextPassword } = req.body;
+  const user = await User.findById(userId).lean();
+
+  // if the user was not found
+  if (!user) 
+  {
+    res.status(400);
+    return res.json({ error: "User not found" });
+  }
+
+  // yoinks scoob, the user has not been verified
+  if (!user.verified) 
+  {
+    res.status(400);
+    return res.json({ error: "User not verified" });
+  }
+
+  // if the password is empty or it is not a string
+  if (!plainTextPassword || typeof plainTextPassword !== "string") 
+  {
+    res.status(400);
+    return res.json({ error: "Invalid Password" });
+  }
+
+  // if the password is not the correct length
+  if (plainTextPassword.length <= 5)
+  {
+    res.status(400);
+    return res.json({ error: "Password too small" });
+  }
+  
+  // change the password in the database
+  const hashedPassword = await bcrypt.hash(plainTextPassword, 10);
+  User.findByIdAndUpdate(userId, { password: hashedPassword }, (err, docs) => 
+  {
+    if (err) 
+    {
+      // Could not update user
+      res.status(500);
+      return res.json({ error: "Could not update user" });
+    } 
+    else
+    {
+      // updated user correctly
+      res.status(200);
+      return res.json({ userId: userId });
+    }
+  });
+});
+
+app.post("/api/verifyForgotPassword", async(req, res) =>
+{
+  // yoink
+  const { userId, verifCode } = req.body;
+  const user = await User.findById(userId).lean();
+
+  // If userId doesn't match any user - ree
+  if (!user)
+  {
+    res.status(400);
+    return res.json({ error: "User does not exist" });
+  }
+
+  if (user.verified === false)
+  {
+    res.status(400);
+    return res.json({ error: "User not verified" });
+  }
+
+  // if wrong verification code
+  if (user.verifCode != verifCode) {
+    res.status(400); // double check
+    return res.json({ error: "Invalid Verification Code" });
+  }
   res.status(200);
-  return res.json({ data: token });
+  return res.json({ userId: userId });
 });
 
 // TODO: this, but after the fifteenth database restructure
@@ -846,14 +744,8 @@ app.post("/api/editClass", async (req, res) =>
     if (semesterNum <= 0)
     {
       // 400 error, "invalid schedule or semester number", return
-      const token = jwt.sign(
-        {
-          error: "invalid schedule or semester number",
-        },
-        process.env.JWT_SECRET
-      );
       res.status(400);
-      return res.json({ data: token });
+      return res.json({ error: "invalid schedule or semester number" });
     }
     const user = await User.findById(userId).lean();
     console.log("got user");
@@ -861,14 +753,8 @@ app.post("/api/editClass", async (req, res) =>
     // if the user does not exist
     if (!user) {
       // 400 error, "User not found", return
-      const token = jwt.sign(
-        {
-          error: "User not found",
-        },
-        process.env.JWT_SECRET
-      );
       res.status(400);
-      return res.json({ data: token });
+      return res.json({ error: "User not found" });
     }
     // SPOOKY GHOST oOoOoOoOoooooOOOO
 
@@ -879,14 +765,8 @@ app.post("/api/editClass", async (req, res) =>
     // if class does not exist
     if (!classObj) {
       // 400 error, "No such class exists", return
-      const token = jwt.sign(
-        {
-          error: "No such class exists",
-        },
-        process.env.JWT_SECRET
-      );
       res.status(400);
-      return res.json({ data: token });
+      return res.json({ error: "No such class exists" });
     }
 
     // get prereqs of classId, store in array classPrereqs
@@ -909,14 +789,8 @@ app.post("/api/editClass", async (req, res) =>
           if (classPrereqs[i] == semClasses[i])
           {
             // 400 error, "prerequisite not met", return
-            const token = jwt.sign(
-              {
-                error: "Prerequisite not met",
-              },
-              process.env.JWT_SECRET
-            );
             res.status(400);
-            return res.json({ data: token });
+            return res.json({ error: "Prerequisite not met" });
           }
         }
       }
@@ -948,14 +822,8 @@ app.post("/api/editClass", async (req, res) =>
   
     console.log("ping pong");
 
-    const token = jwt.sign(
-      {
-        error: "WOO IT DOES THE THING",
-      },
-      process.env.JWT_SECRET
-    );
     res.status(200);
-    return res.json({ data: token });
+    return res.json({ error: "WOO IT DOES THE THING" });
 
     // otherwise, success!
     // users object -> schedule -> add class to semester -> check which semester had the class -> send it
@@ -969,34 +837,7 @@ app.post("/api/editClass", async (req, res) =>
       process.env.JWT_SECRET
     );
     res.status(500);
-    return res.json({ data: token });
-  }
-});
-
-//getElectives + with each prerecs
-app.get("/api/getElectives", async (req, res) =>
-{
-  // find a
-  const classObj = await Class.find({ classType: "elective" }).lean();
-
-  try {
-    const token = jwt.sign(
-      {
-        electives: classObj,
-      },
-      process.env.JWT_SECRET
-    );
-    res.status(200);
-    return res.json({ data: token });
-  } catch {
-    const token = jwt.sign(
-      {
-        error: "Something Bad Happened",
-      },
-      process.env.JWT_SECRET
-    );
-    res.status(500);
-    return res.json({ data: token });
+    return res.json({ error: "Yikes :(" });
   }
 });
 
@@ -1007,51 +848,6 @@ app.post("/api/getSchedule", async (req, res) =>
   return res.json({ data: "This endpoint does not work yet :(" });
 });
 
-// app.post("/api/generateSchedule", async (req, res) =>
-// {
-
-//   const { userId } = req.body;
-
-//   // Grab user
-//   let user = await User.findById(userId).lean();
-
-//   if (!user)
-//   {
-//     const token = jwt.sign(
-//       {
-//         error: "No user found",
-//       },
-//       process.env.JWT_SECRET
-//     );
-//     res.status(400);
-//     return res.json({ data: token });
-//   }
-
-//   console.log("AAAAAAAAAAAAAAAA");
-//   newSchedule = [
-//     { semester: ["ENC1101", "SPC1016", "MAC2311", "COP2500"] },
-//     { semester: ["ENC1102", "COP3223", "BSC2010", "PHY2048"] }
-//   ];
-
-
-//   console.log(newSchedule.type);
-
-//   // newSchedule = JSON.stringify(newSchedule);
-
-//   await User.findByIdAndUpdate( userId, { schedule: newSchedule });
-//   console.log("Updated");
-//   const token = jwt.sign(
-//     {
-//       // Daniel plzzzzzzzzzzzz give schedule to this user \/\/\/\/\/ -Gaby (z emphasis by Christine)
-//       // 624fa445adb7d5549e6f78d7
-//       schedule: newSchedule
-//     },
-//     process.env.JWT_SECRET
-//   );
-//   res.status(200);
-//   return res.json({ data: token });
-// });
-
 // The actual generate schedule \/
 app.post("/api/generateSchedule", async (req, res) => 
 {
@@ -1060,51 +856,39 @@ app.post("/api/generateSchedule", async (req, res) =>
     userId = 0,
     nextSemSeason = "",
     completedClasses: localCompletedClasses = [],
-    selectedElectives: localSelectedElectives = []
+    selectedElectives: localSelectedElectives = [],
+    geps: localGeps = []
   } = req.body;
   let completedClasses = localCompletedClasses;
   let selectedElectives = localSelectedElectives;
   let initialCompletedClassesLength = completedClasses.length;
   let initialSeason = nextSemSeason;
+  let geps = localGeps;
   // console.log("Selected electives: " + selectedElectives);
 
-  // TODO: This is literally only being used once do we really need it?
   const hardCodedFirstSemFallSpring = ["GEP1", "GEP3", "MAC2311", "COP2500"];
   const hardCodedFirstSemSummer = ["GEP1", "GEP3"];
 
   // Input (required) Variables:
   if (userId === 0) 
   {
-    const token = jwt.sign(
-      {
-        error: "Invalid request: no userId",
-      },
-      process.env.JWT_SECRET
-    );
     res.status(400);
-    return res.json({ data: token });
+    return res.json({ error: "Invalid request: no userId" });
   }
   if (nextSemSeason == "") 
   {
-    const token = jwt.sign(
-      {
-        error: "Invalid request: no nextSemSeason",
-      },
-      process.env.JWT_SECRET
-    );
     res.status(400);
-    return res.json({ data: token });
+    return res.json({ error: "Invalid request: no nextSemSeason" });
   }
-  if (selectedElectives === 0)
+  if (selectedElectives.length === 0)
   {
-    const token = jwt.sign(
-      {
-        error: "Invalid request: no selectedElectives",
-      },
-      process.env.JWT_SECRET
-    );
     res.status(400);
-    return res.json({ data: token });
+    return res.json({ error: "Invalid request: no selectedElectives" });
+  }
+  if (geps.length === 0)
+  {
+    res.status(400);
+    return res.json({ error: "Invalid request: no geps" });
   }
 
   let currSemSeason = nextSemSeason;
@@ -1131,17 +915,53 @@ app.post("/api/generateSchedule", async (req, res) =>
     }
   }
 
+  // add the prereqs of the electives to selectedElectives
+  for (let i = 0; i < selectedElectives.length; i++)
+  {
+    let currClass = await Class.findOne({ classId: selectedElectives[i] }).lean();
+    if (currClass.preReqs)
+    {
+      for (let j = 0; j < currClass.preReqs.length; j++)
+      {
+        for (let k = 0; k < currClass.preReqs[j].class.length; k++)
+        {
+          let currPrereq = await Class.findOne({ classId: currClass.preReqs[j].class[k] }).lean();
+          if (currPrereq && currPrereq.classType !== "core")
+          {
+            selectedElectives.push(currPrereq.classId);
+          }
+        }
+      }
+    }
+  }
+
   let gradReqFulfilled = false;
   let gepsCompleted = false;
 
+  console.log(geps);
+
   // GEP array
   let gepCheck = new Array(13);
-  gepCheck.fill(false); 
+  // let gepCheck = [false];
+  for (let i = 1; i < geps.length; i++)
+  {
+    if (geps[i])
+    {
+      gepCheck[i] = true;
+    }
+    else
+    {
+      gepCheck[i] = false;
+    }
+  }
+  // mark the core requirements as completed
+  gepCheck[0] = false;
   gepCheck[7] = true; // Calc 1
   gepCheck[8] = true; // Stats, python, intro to c, cs1, discrete
   gepCheck[11] = true; // Physics 1
   gepCheck[12] = true; // Bio 1 (soft requirement)
   const classCodePat = /[A-Z]{3}[0-9]{4}$/ig;
+  console.log(gepCheck);
   
   let localSchedule = [];
   let currSemClasses = [];
@@ -1160,6 +980,7 @@ app.post("/api/generateSchedule", async (req, res) =>
     {
       // mark that gep as done
       gepCheck[parseInt(currentClass.gep[0])] = true;
+      completedClasses.push("GEP" + parseInt(currentClass.gep[0]));
     }
     else if (currentClass.classType == "core")
     {
@@ -1231,6 +1052,51 @@ app.post("/api/generateSchedule", async (req, res) =>
       if (nextSemSeason == "Fall" || nextSemSeason == "Spring")
       {
         currSemClasses = hardCodedFirstSemFallSpring;
+        // if they already completed gep 1
+        if (gepCheck[1])
+        {
+          currSemClasses.splice(currSemClasses.indexOf("GEP1"), 1);
+          for (let i = 2; i < gepCheck.length; i++)
+          {
+            if (!gepCheck[i])
+            {
+              // TODO: check gepsCompleted before looping ^^^^
+              gepCheck[i] = true;
+              currSemClasses.push("GEP" + i);
+              completedClasses.push("GEP" + i);
+              break;
+            }
+          }
+          // if all the geps are completed already
+          if (currSemClasses.length === 3)
+          {
+            currSemClasses.push("STA2023");
+            completedClasses.push("STA2023");
+            coreClasses.splice(coreClasses.indexOf("STA2023"), 1);
+          }
+        }
+        if (gepCheck[3])
+        {
+          currSemClasses.splice(currSemClasses.indexOf("GEP3"), 1);
+          for (let i = 2; i < gepCheck.length; i++)
+          {
+            if (!gepCheck[i])
+            {
+              // TODO: check gepsCompleted before looping ^^^^
+              gepCheck[i] = true;
+              currSemClasses.push("GEP" + i);
+              completedClasses.push("GEP" + i);
+              break;
+            }
+          }
+          // if all the geps are completed already
+          if (currSemClasses.length === 3)
+          {
+            currSemClasses.push("STA2023");
+            completedClasses.push("STA2023");
+            coreClasses.splice(coreClasses.indexOf("STA2023"), 1);
+          }
+        }
         gepCheck[1] = true;
         gepCheck[3] = true;
         coreClasses.splice(coreClasses.indexOf("MAC2311"), 1);
@@ -1244,8 +1110,6 @@ app.post("/api/generateSchedule", async (req, res) =>
         currSemClasses = hardCodedFirstSemSummer;
         gepCheck[1] = true;
         gepCheck[3] = true;
-        currSemPoss = nerfer(currSemPoss);
-        currSemPoss = await unNerfer(currSemPoss);
       }
     }
     else // if the user has completed classes
@@ -1474,9 +1338,15 @@ app.post("/api/generateSchedule", async (req, res) =>
     // console.log("The almighty schedule:");
     if (localSchedule.length > 15)
     {
-      console.log("---It broke again :(");
+      console.log(localSchedule);
+      console.log("gepsCompleted: " + gepsCompleted)
+      console.log("electiveCount >= 6: " + (electiveCount >= 6));
+      console.log("mathScienceCount >= maxMathScience: " + (mathScienceCount >= maxMathScience));
+      console.log("coreClasses.length == 0: " + (coreClasses.length == 0));
+      console.log("coreClasses: " + coreClasses);
+      console.log("It broke :(");
       res.status(500);
-      return res.json({ error: "it broke again" });
+      return res.json({ error: "it broke" });
     }
     // // Fancy schedule print
     // for (let i = 0; i < localSchedule.length; i++)
@@ -1501,6 +1371,7 @@ app.post("/api/generateSchedule", async (req, res) =>
     {
       if (!gepCheck[i])
       {
+        console.log("Yes sir, that GEP right there: " + i);
         gepsCompleted = false;
         break;
       }
@@ -1515,7 +1386,7 @@ app.post("/api/generateSchedule", async (req, res) =>
     // console.log("coreClasses: " + coreClasses);
     if (gepsCompleted && electiveCount >= 6 && mathScienceCount >= maxMathScience && coreClasses.length == 0)
     {
-      console.log("Can graduate. POGPOGPOGPOGPOGPOGPOGPOGPOG");
+      // console.log("Can graduate. POGPOGPOGPOGPOGPOGPOGPOGPOG");
       gradReqFulfilled = true;
       
       // Push to database
@@ -1523,15 +1394,9 @@ app.post("/api/generateSchedule", async (req, res) =>
       {
         if (err) 
         {
-          const token = jwt.sign(
-            {
-              error: "Schedule could not be added to user",
-            },
-            process.env.JWT_SECRET
-          );
           // 500 since its a server error
           res.status(500); // double check
-          return res.json({ data: token });
+          return res.json({ error: "Schedule could not be added to user"});
         } 
         else
         {
@@ -1544,11 +1409,15 @@ app.post("/api/generateSchedule", async (req, res) =>
           // );
           // 200 since it succeeded
           // Fancy schedule print
-          console.log("\n------------------------");
+          console.log("\n\n");
           console.log("The almighty schedule:");
           let season = initialSeason;
           for (let i = 0; i < localSchedule.length; i++)
           {
+            if (i % 3 == 0)
+            {
+              console.log("Year " + (Math.floor(i / 3) + 1) + ":");
+            }
             switch (season)
             {
               case "Fall":
@@ -1572,7 +1441,7 @@ app.post("/api/generateSchedule", async (req, res) =>
     }
     else
     {
-      console.log("user can not graduate");
+      console.log("still loading");
       
       completedClasses = completedClasses.concat(currSemClasses);
 
@@ -1679,7 +1548,7 @@ app.post("/api/generateSchedule", async (req, res) =>
       }
 
       // Special case for stupid tech writing
-      if (completedClasses.indexOf("GEP2") != -1 && 
+      if ((completedClasses.indexOf("GEP2") != -1 || gepCheck[2]) && 
           completedClasses.indexOf("ENC3241") == -1 && 
           coreClasses.indexOf("ENC3241") != -1 &&
           currSemPoss.indexOf("ENC3241") == -1)
@@ -1723,21 +1592,6 @@ app.post("/api/generateSchedule", async (req, res) =>
         currSemSeason = "Fall";
     } // end else
   }
-});
-
-// passwords
-app.get("/api/passwords", (req, res) => 
-{
-  const count = 5;
-
-  // Generate some passwords
-  const passwords = [];
-  passwords.push(":stares:");
-
-  // Return them as json
-  res.json(passwords);
-
-  console.log(`Sent ${count} passwords`);
 });
 
 // ------------------------------------------------------------------------------------------------------------------------------------

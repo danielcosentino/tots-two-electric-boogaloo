@@ -1,11 +1,14 @@
 import React, { useState } from "react";
 import logo from "../Images/ucf-logo.png";
-import { Link } from "react-router-dom";
+import { useHistory } from "react-router-dom";
+import jwt from "jwt-decode";
 import "bootstrap/dist/css/bootstrap.css";
+import "./styles.css";
 
 function VerifyForgotPasswordUser() {
   var verificationCode;
   var validationVerificationCode;
+  let history = useHistory();
 
   const [message, setMessage] = useState("");
 
@@ -30,7 +33,48 @@ function VerifyForgotPasswordUser() {
     if (!validationVerificationCode) {
       return;
     }
-    window.location.href = "/resetPassword";
+
+    let user = JSON.parse(localStorage.getItem("user_data"));
+
+    var obj = { userId: user.id, verifCode: verificationCode.value };
+    var js = JSON.stringify(obj);
+
+    console.log(js);
+
+    try {
+      const response = await fetch(
+        process.env.REACT_APP_API_URL + "/api/verifyForgotPassword",
+        {
+          method: "POST",
+          body: js,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      console.log(response.status);
+
+      var resp = JSON.parse(await response.text());
+
+      console.log(resp);
+
+      var data = jwt(resp.data);
+
+      console.log(data);
+
+      if (data.error) {
+        setMessage(data.error);
+      } else {
+        let user = {
+          id: data.userId,
+        };
+        localStorage.clear();
+        localStorage.setItem("user_data", JSON.stringify(user));
+        window.location.href = "/resetPassword";
+      }
+    } catch (e) {
+      console.log(e.toString());
+      return;
+    }
   };
 
   return (
@@ -39,46 +83,27 @@ function VerifyForgotPasswordUser() {
         className="navbar container-fluid"
         style={{ backgroundColor: "#FFC904" }}
       >
-        <Link to="/forgotPassword">Back</Link>
+        <button className="back-button" onClick={() => history.goBack()}>
+          Back
+        </button>
       </nav>
       <div id="contentDiv" className="container-fluid text-center p-4">
         <div id="logoDiv">
-          <img
-            src={logo}
-            alt="ucf-logo"
-            style={{
-              borderRadius: 25,
-              width: "10%",
-            }}
-          />
+          <img src={logo} alt="ucf-logo" className="logo" />
         </div>
-        <h1
-          id="totsHeader"
-          style={{
-            color: "#FFC904",
-          }}
-        >
+        <h1 id="totsHeader" className="header-logo">
           TOP OF THE SCHEDULE
         </h1>
         <h1 id="inner-title">Verify User</h1>
         <form onSubmit={doVerify}>
-          <label
-            htmlFor="verificationCode"
-            style={{
-              fontSize: 24,
-            }}
-          >
+          <label htmlFor="verificationCode" className="fonts">
             Enter the 4 digit code you received in your email
           </label>
           <br />
           <input
             type="password"
             id="verificationCode"
-            className="border-4 w-50 p-3"
-            style={{
-              borderColor: "#FFC904",
-              borderRadius: 25,
-            }}
+            className="border-4 w-25 p-3 inputs"
             placeholder="Verification Code"
             ref={(c) => (verificationCode = c)}
           />
@@ -90,12 +115,7 @@ function VerifyForgotPasswordUser() {
           <button
             id="verifyUserButton"
             type="submit"
-            className="p-3 w-25 m-3"
-            style={{
-              borderRadius: 25,
-              backgroundColor: "#FFC904",
-              fontSize: 24,
-            }}
+            className="p-3 w-25 m-3 regular-button"
             onClick={doVerify}
           >
             Verify

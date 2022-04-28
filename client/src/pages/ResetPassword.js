@@ -1,7 +1,9 @@
 import React, { useState } from "react";
 import logo from "../Images/ucf-logo.png";
-import { Link, useHistory } from "react-router-dom";
+import { useHistory } from "react-router-dom";
+import jwt from "jwt-decode";
 import "bootstrap/dist/css/bootstrap.css";
+import "./styles.css";
 
 function ResetPassword() {
   var newPassword;
@@ -62,7 +64,41 @@ function ResetPassword() {
       return;
     }
 
-    window.location.href = "/";
+    let user = JSON.parse(localStorage.getItem("user_data"));
+
+    var obj = { userId: user.id, password: newPassword.value };
+    var js = JSON.stringify(obj);
+    console.log(js);
+
+    try {
+      const response = await fetch(
+        process.env.REACT_APP_API_URL + "/api/resetPassword",
+        {
+          method: "POST",
+          body: js,
+          headers: { "Content-Type": "application/json" },
+        }
+      );
+
+      let resp = JSON.parse(await response.text());
+      console.log(resp);
+
+      let data = jwt(resp.data);
+      console.log(data);
+
+      if (data.error) {
+        setMessage(data.error);
+      } else {
+        let user = {
+          id: data.userId,
+        };
+        localStorage.clear();
+        window.location.href = "/";
+      }
+    } catch (e) {
+      console.log(e.toString());
+      return;
+    }
   };
 
   return (
@@ -71,33 +107,18 @@ function ResetPassword() {
         className="navbar container-fluid"
         style={{ backgroundColor: "#FFC904" }}
       >
-        <Link onClick={() => history.goBack()}>Back</Link>
+        <button className="back-button" onClick={() => history.goBack()}>
+          Back
+        </button>
       </nav>
       <div id="contentDiv" className="container-fluid text-center p-4">
         <div id="logoDiv">
-          <img
-            src={logo}
-            alt="ucf-logo"
-            style={{
-              borderRadius: 25,
-              width: "10%",
-            }}
-          />
+          <img src={logo} alt="ucf-logo" className="logo" />
         </div>
-        <h1
-          id="totsHeader"
-          style={{
-            color: "#FFC904",
-          }}
-        >
+        <h1 id="totsHeader" className="header-logo">
           TOP OF THE SCHEDULE
         </h1>
-        <label
-          htmlFor="resetNewPassword"
-          style={{
-            fontSize: 24,
-          }}
-        >
+        <label htmlFor="resetNewPassword" className="fonts">
           New Password
         </label>
         <br />
@@ -105,11 +126,7 @@ function ResetPassword() {
           <input
             type="password"
             id="resetNewPassword"
-            className="border-4 w-50 p-3"
-            style={{
-              borderColor: "#FFC904",
-              borderRadius: 25,
-            }}
+            className="border-4 w-25 p-3 inputs"
             placeholder="Password"
             ref={(c) => (newPassword = c)}
           />
@@ -118,23 +135,14 @@ function ResetPassword() {
             {newPasswordMessage}
           </span>
           <br />
-          <label
-            htmlFor="resetConfirmPassword"
-            style={{
-              fontSize: 24,
-            }}
-          >
+          <label htmlFor="resetConfirmPassword" className="fonts">
             Confirm New Password
           </label>
           <br />
           <input
             type="password"
             id="resetConfirmPassword"
-            className="border-4 w-50 p-3"
-            style={{
-              borderColor: "#FFC904",
-              borderRadius: 25,
-            }}
+            className="border-4 w-25 p-3 inputs"
             placeholder="Confirm Password"
             ref={(c) => (confirmNewPassword = c)}
           />
@@ -146,12 +154,7 @@ function ResetPassword() {
           <button
             id="resetButton"
             type="submit"
-            className="p-3 w-25 m-3"
-            style={{
-              borderRadius: 25,
-              backgroundColor: "#FFC904",
-              fontSize: 24,
-            }}
+            className="p-3 w-25 m-3 regular-button"
             onClick={doReset}
           >
             Reset Password
