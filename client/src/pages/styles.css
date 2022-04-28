@@ -1,0 +1,35 @@
+.inputs {
+  border-color: #ffc904;
+  border-radius: 25px;
+}
+
+.fonts {
+  font-size: 24px;
+}
+
+.logo {
+  border-radius: 25%;
+  width: 10%;
+}
+
+.header-logo {
+  color: #ffc904;
+}
+
+.regular-button {
+  border-radius: 25px;
+  background-color: #ffc904;
+  font-size: 24px;
+}
+
+.back-button {
+  border-radius: 25px;
+  background-color: #ffffff;
+  border: 0;
+}
+
+#container {
+  height: 90vh;
+  padding: 10px;
+  text-align: center;
+}
