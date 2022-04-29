@@ -384,7 +384,7 @@ app.post("/api/login", async (req, res) =>
     );
     res.set("X-Token", token);
     res.status(200);
-    return res.json({ verified: user.verified, schedule: user.schedule });
+    return res.json({ verified: user.verified, schedule: user.schedule, sName: user.sName });
   }
   // password is incorrect
   else 
@@ -392,21 +392,12 @@ app.post("/api/login", async (req, res) =>
     res.status(400);
     return res.json({ error: "Invalid email/password" });
   }
-
-  res.status(500);
-  const token = jwt.sign(
-    {
-      error: "Unknown error",
-    },
-    process.env.JWT_SECRET
-  );
-  return res.json({ data: token });
 });
 
 // register
 app.post("/api/register", async (req, res) => 
 {
-  const { email, password: plainTextPassword } = req.body;
+  const { sName, email, password: plainTextPassword } = req.body;
 
   // if the email is empty or it is not a string
   if (!email || typeof email !== "string" || email.match(/\S+@\S+\.\S+/) == null)
@@ -436,6 +427,7 @@ app.post("/api/register", async (req, res) =>
   {
     const user = await User.create(
     {
+      sName,
       email,
       password,
       verified: false,
@@ -592,6 +584,7 @@ app.use((req, res, next) =>
   }
   catch (err)
   {
+    console.log("unauthorized error: " + err);
     res.status(400);
     return res.json({ error: "Unauthorized"});
   }
@@ -803,14 +796,8 @@ app.post("/api/editClass", async (req, res) =>
           // if there are any matches in the arrays "classPrereqs" and "semClasses"
           if (classPostreqs[i] == semClasses[i]) {
             // 400 error, "postrequisite not met", return
-            const token = jwt.sign(
-              {
-                error: "Postrequisite not met",
-              },
-              process.env.JWT_SECRET
-            );
             res.status(400);
-            return res.json({ data: token });
+            return res.json({ error: "Postrequisite not met" });
           }
         }
       }
@@ -830,12 +817,6 @@ app.post("/api/editClass", async (req, res) =>
   } catch {
     // catch
     // 500 error, "database fail?"
-    const token = jwt.sign(
-      {
-        error: "Yikes :(",
-      },
-      process.env.JWT_SECRET
-    );
     res.status(500);
     return res.json({ error: "Yikes :(" });
   }
@@ -844,8 +825,31 @@ app.post("/api/editClass", async (req, res) =>
 // TODO: this
 app.post("/api/getSchedule", async (req, res) =>
 {
-  res.status(500);
-  return res.json({ data: "This endpoint does not work yet :(" });
+  const
+  { userId = 0 } = req.body;
+
+  if (userId === 0) 
+  {
+    res.status(400);
+    return res.json({ error: "Invalid request: no userId" });
+  }
+
+  let user = await User.findById(userId).lean();
+
+  if (!user)
+  {
+    res.status(400);
+    return res.json({ data: "User not found" });
+  }
+
+  if (!user.schedule)
+  {
+    res.status(500);
+    return res.json({ data: "Schedule not found" });
+  }
+
+  res.status(200);
+  return res.json({ schedule: user.schedule });
 });
 
 // The actual generate schedule \/
@@ -857,13 +861,15 @@ app.post("/api/generateSchedule", async (req, res) =>
     nextSemSeason = "",
     completedClasses: localCompletedClasses = [],
     selectedElectives: localSelectedElectives = [],
-    geps: localGeps = []
+    geps: localGeps = [],
+    mathSciCount = 0
   } = req.body;
   let completedClasses = localCompletedClasses;
   let selectedElectives = localSelectedElectives;
   let initialCompletedClassesLength = completedClasses.length;
   let initialSeason = nextSemSeason;
   let geps = localGeps;
+  let mathScienceCount = mathSciCount;
   // console.log("Selected electives: " + selectedElectives);
 
   const hardCodedFirstSemFallSpring = ["GEP1", "GEP3", "MAC2311", "COP2500"];
@@ -936,7 +942,7 @@ app.post("/api/generateSchedule", async (req, res) =>
   }
 
   let gradReqFulfilled = false;
-  let gepsCompleted = false;
+  let gepsCompleted = true;
 
   console.log(geps);
 
@@ -952,6 +958,7 @@ app.post("/api/generateSchedule", async (req, res) =>
     else
     {
       gepCheck[i] = false;
+      gepsCompleted = false;
     }
   }
   // mark the core requirements as completed
@@ -961,13 +968,11 @@ app.post("/api/generateSchedule", async (req, res) =>
   gepCheck[11] = true; // Physics 1
   gepCheck[12] = true; // Bio 1 (soft requirement)
   const classCodePat = /[A-Z]{3}[0-9]{4}$/ig;
-  console.log(gepCheck);
   
   let localSchedule = [];
   let currSemClasses = [];
   let electiveCount = 0;
   let maxMathScience = 3;
-  let mathScienceCount = 0;
   let currSemPoss = [];
 
   // Check completed classes
@@ -1092,9 +1097,17 @@ app.post("/api/generateSchedule", async (req, res) =>
           // if all the geps are completed already
           if (currSemClasses.length === 3)
           {
-            currSemClasses.push("STA2023");
-            completedClasses.push("STA2023");
-            coreClasses.splice(coreClasses.indexOf("STA2023"), 1);
+            if (currSemClasses.indexOf("STA2023") == -1)
+            {
+              currSemClasses.push("STA2023");
+              completedClasses.push("STA2023");
+              coreClasses.splice(coreClasses.indexOf("STA2023"), 1);
+            }
+            else if (mathScienceCount < maxMathScience)
+            {
+              currSemClasses.push("Math/Science Elective");
+              mathScienceCount++;
+            }
           }
         }
         gepCheck[1] = true;
@@ -1110,6 +1123,58 @@ app.post("/api/generateSchedule", async (req, res) =>
         currSemClasses = hardCodedFirstSemSummer;
         gepCheck[1] = true;
         gepCheck[3] = true;
+        if (gepCheck[1])
+        {
+          currSemClasses.splice(currSemClasses.indexOf("GEP1"), 1);
+          for (let i = 2; i < gepCheck.length; i++)
+          {
+            if (!gepCheck[i])
+            {
+              // TODO: check gepsCompleted before looping ^^^^
+              gepCheck[i] = true;
+              currSemClasses.push("GEP" + i);
+              completedClasses.push("GEP" + i);
+              break;
+            }
+          }
+          // if all the geps are completed already
+          if (currSemClasses.length === 1)
+          {
+            currSemClasses.push("STA2023");
+            completedClasses.push("STA2023");
+            coreClasses.splice(coreClasses.indexOf("STA2023"), 1);
+          }
+        }
+        if (gepCheck[3])
+        {
+          currSemClasses.splice(currSemClasses.indexOf("GEP3"), 1);
+          for (let i = 2; i < gepCheck.length; i++)
+          {
+            if (!gepCheck[i])
+            {
+              // TODO: check gepsCompleted before looping ^^^^
+              gepCheck[i] = true;
+              currSemClasses.push("GEP" + i);
+              completedClasses.push("GEP" + i);
+              break;
+            }
+          }
+          // if all the geps are completed already
+          if (currSemClasses.length === 1)
+          {
+            if (currSemClasses.indexOf("STA2023") == -1)
+            {
+              currSemClasses.push("STA2023");
+              completedClasses.push("STA2023");
+              coreClasses.splice(coreClasses.indexOf("STA2023"), 1);
+            }
+            else if (mathScienceCount < maxMathScience)
+            {
+              currSemClasses.push("Math/Science Elective");
+              mathScienceCount++;
+            }
+          }
+        }
       }
     }
     else // if the user has completed classes
@@ -1401,12 +1466,6 @@ app.post("/api/generateSchedule", async (req, res) =>
         else
         {
           // Everything worked perfectly the first time :)
-          // const token = jwt.sign(
-          //   {
-          //     schedule: localSchedule,
-          //   },
-          //   process.env.JWT_SECRET
-          // );
           // 200 since it succeeded
           // Fancy schedule print
           console.log("\n\n");
