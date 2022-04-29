@@ -335,11 +335,11 @@ app.post("/api/login", async (req, res) =>
         res.status(500); // double check
         return res.json({ error: "could not update verifCode"});
       } 
-      else // no error adding verifCode
-      {
-        res.status(200);
-        return res.json({ userId: userId });
-      }
+      // else // no error adding verifCode
+      // {
+      //   res.status(200);
+      //   return res.json({ userId: userId });
+      // }
     });
     // this is for email sending stuff
     const msg = 
@@ -354,6 +354,8 @@ app.post("/api/login", async (req, res) =>
     try 
     {
       await sgMail.send(msg);
+      res.status(200);
+      return res.json({ error: "User not verified, email sent" });
     } 
     catch (error) 
     {
@@ -365,8 +367,6 @@ app.post("/api/login", async (req, res) =>
       res.status(500);
       return res.json({ error: "Failed to send message" });
     }
-    res.status(400);
-    return res.json({ error: "User not verified, email sent" });
   }
 
   if (await bcrypt.compare(password, user.password).catch((err) => 
