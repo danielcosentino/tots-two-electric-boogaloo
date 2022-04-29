@@ -594,9 +594,6 @@ app.use((req, res, next) =>
 // Verify User
 app.post("/api/verifyUser", async (req, res) =>
 {
-
-  console.log(req.token);
-
   // yoink
   const { verifCode } = req.body;
   const userId = req.token.userId;
@@ -649,7 +646,8 @@ app.post("/api/verifyUser", async (req, res) =>
 app.post("/api/resetPassword", async (req, res) =>
 {
   // yoink
-  const { userId, password: plainTextPassword } = req.body;
+  const { password: plainTextPassword } = req.body;
+  const userId = req.token.userId;
   const user = await User.findById(userId).lean();
 
   // if the user was not found
@@ -702,7 +700,8 @@ app.post("/api/resetPassword", async (req, res) =>
 app.post("/api/verifyForgotPassword", async(req, res) =>
 {
   // yoink
-  const { userId, verifCode } = req.body;
+  const { verifCode } = req.body;
+  const userId = req.token.userId;
   const user = await User.findById(userId).lean();
 
   // If userId doesn't match any user - ree
@@ -823,10 +822,9 @@ app.post("/api/editClass", async (req, res) =>
 });
 
 // TODO: this
-app.post("/api/getSchedule", async (req, res) =>
+app.get("/api/getSchedule", async (req, res) =>
 {
-  const
-  { userId = 0 } = req.body;
+  const userId = req.token.userId;
 
   if (userId === 0) 
   {
