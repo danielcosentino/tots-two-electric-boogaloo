@@ -1,15 +1,14 @@
 import React, { useState } from "react";
 import logo from "../Images/ucf-logo.png";
 import { useHistory } from "react-router-dom";
-import jwt from "jwt-decode";
 import "bootstrap/dist/css/bootstrap.css";
 import "./styles.css";
 
 function ResetPassword() {
-  var newPassword;
-  var confirmNewPassword;
-  var validationNewPassword;
-  var validationConfirmNewPassword;
+  let newPassword;
+  let confirmNewPassword;
+  let validationNewPassword;
+  let validationConfirmNewPassword;
 
   const [newPasswordMessage, setNewPasswordMessage] = useState("");
   const [confirmNewPasswordMessage, setConfirmNewPasswordMessage] =
@@ -64,37 +63,35 @@ function ResetPassword() {
       return;
     }
 
-    let user = JSON.parse(localStorage.getItem("user_data"));
-
-    var obj = { userId: user.id, password: newPassword.value };
-    var js = JSON.stringify(obj);
+    let obj = { password: newPassword.value };
+    let js = JSON.stringify(obj);
     console.log(js);
 
     try {
-      const response = await fetch(
+      fetch(
         process.env.REACT_APP_API_URL + "/api/resetPassword",
         {
           method: "POST",
           body: js,
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "Authorization": localStorage.getItem("token") },
         }
-      );
+      ).then(async res=>
+        {
+          let body = await res.json();
 
-      let resp = JSON.parse(await response.text());
-      console.log(resp);
-
-      let data = jwt(resp.data);
-      console.log(data);
-
-      if (data.error) {
-        setMessage(data.error);
-      } else {
-        let user = {
-          id: data.userId,
-        };
-        localStorage.clear();
-        window.location.href = "/";
-      }
+          if (res.status !== 200)
+          {
+            setMessage(body.error);
+          }
+          else
+          {
+            localStorage.clear();
+            window.location.href = "/";
+          }
+        }).catch(err => 
+          {
+            setMessage(err)
+          });
     } catch (e) {
       console.log(e.toString());
       return;

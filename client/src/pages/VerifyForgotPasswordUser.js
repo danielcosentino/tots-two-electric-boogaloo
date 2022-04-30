@@ -1,13 +1,12 @@
 import React, { useState } from "react";
 import logo from "../Images/ucf-logo.png";
 import { useHistory } from "react-router-dom";
-import jwt from "jwt-decode";
 import "bootstrap/dist/css/bootstrap.css";
 import "./styles.css";
 
 function VerifyForgotPasswordUser() {
-  var verificationCode;
-  var validationVerificationCode;
+  let verificationCode;
+  let validationVerificationCode;
   let history = useHistory();
 
   const [message, setMessage] = useState("");
@@ -34,43 +33,36 @@ function VerifyForgotPasswordUser() {
       return;
     }
 
-    let user = JSON.parse(localStorage.getItem("user_data"));
 
-    var obj = { userId: user.id, verifCode: verificationCode.value };
-    var js = JSON.stringify(obj);
+    let obj = { verifCode: verificationCode.value };
+    let js = JSON.stringify(obj);
 
     console.log(js);
 
     try {
-      const response = await fetch(
+      fetch(
         process.env.REACT_APP_API_URL + "/api/verifyForgotPassword",
         {
           method: "POST",
           body: js,
-          headers: { "Content-Type": "application/json" },
+          headers: { "Content-Type": "application/json", "Authorization": localStorage.getItem("token") },
         }
-      );
+      ).then(async res=>
+      {
+        let body = await res.json();
 
-      console.log(response.status);
-
-      var resp = JSON.parse(await response.text());
-
-      console.log(resp);
-
-      var data = jwt(resp.data);
-
-      console.log(data);
-
-      if (data.error) {
-        setMessage(data.error);
-      } else {
-        let user = {
-          id: data.userId,
-        };
-        localStorage.clear();
-        localStorage.setItem("user_data", JSON.stringify(user));
-        window.location.href = "/resetPassword";
-      }
+        if (res.status !== 200)
+        {
+          setMessage(body.error);
+        }
+        else
+        {
+          window.location.href = "/resetPassword";
+        }
+      }).catch(err => 
+      {
+        setMessage(err)
+      });
     } catch (e) {
       console.log(e.toString());
       return;
@@ -99,6 +91,7 @@ function VerifyForgotPasswordUser() {
           <label htmlFor="verificationCode" className="fonts">
             Enter the 4 digit code you received in your email
           </label>
+          <br />
           <br />
           <input
             type="password"

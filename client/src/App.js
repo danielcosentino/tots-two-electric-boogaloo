@@ -13,6 +13,7 @@ import {
 } from "react-router-dom";
 import "./App.css";
 import Flowchart from "./pages/Flowchart.js";
+import DisplaySchedule from "./pages/DisplaySchedule.js";
 
 function App() {
   return (
@@ -42,6 +43,9 @@ function App() {
           </Route>
           <Route path="/flowchart" exact>
             <Flowchart />
+          </Route>
+          <Route path="/displaySchedule" exact>
+            <DisplaySchedule/>
           </Route>
           <Redirect to="/" />
         </Switch>

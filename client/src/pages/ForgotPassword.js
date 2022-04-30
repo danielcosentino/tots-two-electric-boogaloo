@@ -4,12 +4,11 @@ import lock from "../Images/lock.png";
 import { useHistory } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.css";
 import validator from "validator";
-import jwt from "jwt-decode";
 import "./styles.css";
 
 function ForgotPassword() {
-  var email;
-  var validationEmail;
+  let email;
+  let validationEmail;
   let history = useHistory();
 
   const [message, setMessage] = useState("");
@@ -36,13 +35,13 @@ function ForgotPassword() {
       return;
     }
 
-    var obj = { email: email.value };
-    var js = JSON.stringify(obj);
+    let obj = { email: email.value };
+    let js = JSON.stringify(obj);
 
     console.log(js);
 
     try {
-      const response = await fetch(
+      fetch(
         process.env.REACT_APP_API_URL + "/api/forgotPasswordEmail",
         {
           method: "POST",
@@ -50,27 +49,23 @@ function ForgotPassword() {
           headers: { "Content-Type": "application/json" },
           mode: "cors",
         }
-      );
+      ).then(async res=>
+      {
+      // let data = JSON.parse(await response.text());
+      let body = await res.json();
 
-      var resp = JSON.parse(await response.text());
-
-      console.log(resp);
-
-      var data = jwt(resp.data);
-
-      console.log(data);
-
-      if (data.error) {
-        setMessage(data.error);
+      if (body.error !== "Verification code sent!") {
+        setMessage(body.error);
       } else {
-        var user = {
-          id: data.userId,
-        };
         localStorage.clear();
-        localStorage.setItem("user_data", JSON.stringify(user));
+        let token = res.headers.get('X-Token');
+        localStorage.setItem('token', token);
         setMessage("");
         window.location.href = "/verifyForgotPasswordUser";
       }
+    }).catch(err => {
+      setMessage(err)
+    });
     } catch (e) {
       console.log(e.toString());
       return;

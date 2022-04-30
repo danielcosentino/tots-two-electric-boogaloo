@@ -14,12 +14,15 @@ const semesterArray = new mongoose.Schema(
 
 const UserSchema = new mongoose.Schema(
 	{
+    sName: { type: String, required: true },
 		email: { type: String, required: true, unique: true },
 		password: { type: String, required: true },
 		verified: { type: Boolean, required: true },
 		verifCode: { type: String, requried: true },
 		schedule: { type: Array },
-		completedClasses: { type : Array }
+		completedClasses: { type: Array },
+    nextSemSeason: {type: String, required: true },
+    nextSemYear: {type: Number, required: true },
 	},
 	{ collection: "Users" }
 );

@@ -24,7 +24,7 @@ else
   );
 }
 
-// TODO: Serve static files from the React app
+// Serve static files from the React app
 app.use(express.static(path.join(__dirname, "client/build")));
 mongoose.connect(process.env.MONGO_CONNECTION_STRING, 
 {
@@ -35,6 +35,9 @@ app.use(cors({
   exposedHeaders: ['content-type', 'X-Token']
 }));
 app.use(bodyParser.json());
+
+app.use('/static', express.static('public'))
+
 app.use(
   session(
     {
@@ -191,14 +194,11 @@ async function classSearchAndDestroy(userId, classId, user, res)
   console.log("at the end of classSearchAndDestroy");
 }
 
-// TODO: Gaby comment this pl0x
-// TODO: this needs to be fixed
-// Does it tho, does it realllllyyyy?
 async function classAdd(userId, classId, semesterNum, user, res)
 {
   console.log("Adding...");
   // Updates local user
-  var help = user.schedule[semesterNum].semester.push(classId);
+  let help = user.schedule[semesterNum].semester.push(classId);
 
   console.log("Adding testy", help);
   console.log(user.schedule);
@@ -333,7 +333,7 @@ app.post("/api/login", async (req, res) =>
       {
         // 500 since its a server error
         res.status(500); // double check
-        return res.json({ error: "could not update verifCode"});
+        return res.json({ error: "could not update verifCode" });
       } 
       // else // no error adding verifCode
       // {
@@ -354,6 +354,13 @@ app.post("/api/login", async (req, res) =>
     try 
     {
       await sgMail.send(msg);
+      const token = jwt.sign(
+        {
+          userId: userId,
+        },
+        process.env.JWT_SECRET,
+      );
+      res.set("X-Token", token);
       res.status(200);
       return res.json({ error: "User not verified, email sent" });
     } 
@@ -384,7 +391,7 @@ app.post("/api/login", async (req, res) =>
     );
     res.set("X-Token", token);
     res.status(200);
-    return res.json({ verified: user.verified, schedule: user.schedule, sName: user.sName });
+    return res.json({ schedule: user.schedule, sName: user.sName });
   }
   // password is incorrect
   else 
@@ -432,8 +439,10 @@ app.post("/api/register", async (req, res) =>
       password,
       verified: false,
       verifCode,
-      schedules: [],
+      schedule: [],
       completedClasses: [],
+      nextSemSeason: "Fall",
+      nextSemYear: 3000
     });
     console.log("user created successfully" + user);
 
@@ -470,7 +479,7 @@ app.post("/api/register", async (req, res) =>
     );
     res.set("X-Token", token);
     res.status(200);
-    return res.json({ userId: user._id });
+    return res.json({ error: "User created, email sent" });
   }
   catch (error)
   {
@@ -519,8 +528,15 @@ app.post("/api/forgotPasswordEmail", async (req, res) =>
     } 
     else // no error adding verifCode
     {
+      const token = jwt.sign(
+        {
+          userId: userId,
+        },
+        process.env.JWT_SECRET,
+      );
+      res.set("X-Token", token);
       res.status(200);
-      return res.json({ userId: userIdn });
+      return res.json({ error: "Verification code sent!" });
     }
   });
 
@@ -533,7 +549,6 @@ app.post("/api/forgotPasswordEmail", async (req, res) =>
     subject: "Your Top o' the Schedule Registration Key",
     text: "Here is your Verification Code: " + verifCode,
   };
-
   try {
     await sgMail.send(msg);
   } catch (error) {
@@ -547,8 +562,6 @@ app.post("/api/forgotPasswordEmail", async (req, res) =>
     res.status(500);
     return res.json({ error: "Failed to send message" });
   }
-  res.status(200);
-  return res.json({ userId: userId });
 });
 
 //getElectives + with each prerecs
@@ -574,13 +587,14 @@ app.get("/api/getElectives", async (req, res) =>
 //  | |  | |  | |\ V / (_| | ||  __/ | |\ \ (_) | |_| | ||  __/\__ \
 //  \_|  |_|  |_| \_/ \__,_|\__\___| \_| \_\___/ \__,_|\__\___||___/
 
-// check to ensure the token is valid
+// token verification
 app.use((req, res, next) => 
 {
   let token = req.get("Authorization");
   try
   {
     req.token = jwt.verify(token, process.env.JWT_SECRET);
+    console.log("token", req.token);
   }
   catch (err)
   {
@@ -591,7 +605,6 @@ app.use((req, res, next) =>
   next();
 });
 
-// Verify User
 app.post("/api/verifyUser", async (req, res) =>
 {
   // yoink
@@ -607,13 +620,14 @@ app.post("/api/verifyUser", async (req, res) =>
   }
 
   // if wrong verification code
-  if (user.verifCode != verifCode) {
+  if (user.verifCode != verifCode) 
+  {
     res.status(400); // double check
     return res.json(
       {
-        userId: userId,
         error: "Invalid Verification Code"
-      });
+      }
+    );
   }
 
   // user has already been verified
@@ -636,13 +650,12 @@ app.post("/api/verifyUser", async (req, res) =>
         // it did work woo yay fun time woo party woo
         // 200 since it succeeded
         res.status(200);
-        return res.json({ userId: userId });
+        return res.json({ error: "User is now verified!" });
       }
     });
   }
 });
 
-// reset password
 app.post("/api/resetPassword", async (req, res) =>
 {
   // yoink
@@ -692,7 +705,7 @@ app.post("/api/resetPassword", async (req, res) =>
     {
       // updated user correctly
       res.status(200);
-      return res.json({ userId: userId });
+      return res.json({ error: "Password updated!" });
     }
   });
 });
@@ -718,110 +731,15 @@ app.post("/api/verifyForgotPassword", async(req, res) =>
   }
 
   // if wrong verification code
-  if (user.verifCode != verifCode) {
+  if (user.verifCode != verifCode)
+  {
     res.status(400); // double check
     return res.json({ error: "Invalid Verification Code" });
   }
   res.status(200);
-  return res.json({ userId: userId });
+  return res.json({ error: "Correct verification code!" });
 });
 
-// TODO: this, but after the fifteenth database restructure
-// Edit Class
-app.post("/api/editClass", async (req, res) => 
-{
-  const { userId, semesterNum, classId } = req.body;
-  try 
-  {
-    if (semesterNum <= 0)
-    {
-      // 400 error, "invalid schedule or semester number", return
-      res.status(400);
-      return res.json({ error: "invalid schedule or semester number" });
-    }
-    const user = await User.findById(userId).lean();
-    console.log("got user");
-
-    // if the user does not exist
-    if (!user) {
-      // 400 error, "User not found", return
-      res.status(400);
-      return res.json({ error: "User not found" });
-    }
-    // SPOOKY GHOST oOoOoOoOoooooOOOO
-
-    const classObj = await Class.findOne({ classId }).lean();
-    console.log("got classObj, type of " + typeof classObj);
-    console.log(classObj);
-
-    // if class does not exist
-    if (!classObj) {
-      // 400 error, "No such class exists", return
-      res.status(400);
-      return res.json({ error: "No such class exists" });
-    }
-
-    // get prereqs of classId, store in array classPrereqs
-    const classPrereqs = classObj.preReqs;
-
-    // get postreqs of classId, store in array classPostreqs
-    const classPostReqs = classObj.postReqs;
-
-    // get class names of the classes in the semester specified, store in array semClasses
-    let semClasses = user.schedule[semesterNum - 1].semester;
-
-    // Check prereqs to classes in semester
-    if (classPrereqs && (semesterNum > 1))
-    {
-      for (let i = 0; i < classPrereqs.length; i++)
-      {
-        for (let j = 0; j < semClasses.length; j++)
-        {
-          // if there are any matches in the arrays "classPrereqs" and "semClasses"
-          if (classPrereqs[i] == semClasses[i])
-          {
-            // 400 error, "prerequisite not met", return
-            res.status(400);
-            return res.json({ error: "Prerequisite not met" });
-          }
-        }
-      }
-    }
-
-    // Check postreqs of class against semester
-    if (classPostReqs) {
-      for (let i = 0; i < classPostreqs.length; i++) {
-        for (let j = 0; j < semClasses.length; j++) {
-          // if there are any matches in the arrays "classPrereqs" and "semClasses"
-          if (classPostreqs[i] == semClasses[i]) {
-            // 400 error, "postrequisite not met", return
-            res.status(400);
-            return res.json({ error: "Postrequisite not met" });
-          }
-        }
-      }
-    }
-
-    // Move class from current semester to new semester --------------------------------------------
-    await classSearchAndDestroy(userId, classId, user);
-    await classAdd(userId, classId, semesterNum-1, user);
-  
-    console.log("ping pong");
-
-    res.status(200);
-    return res.json({ error: "WOO IT DOES THE THING" });
-
-    // otherwise, success!
-    // users object -> schedule -> add class to semester -> check which semester had the class -> send it
-  } catch {
-    // catch
-    // 500 error, "database fail?"
-    res.status(500);
-    return res.json({ error: "Yikes :(" });
-  }
-});
-
-// TODO: this
 app.get("/api/getSchedule", async (req, res) =>
 {
   const userId = req.token.userId;
@@ -847,21 +765,26 @@ app.get("/api/getSchedule", async (req, res) =>
   }
 
   res.status(200);
-  return res.json({ schedule: user.schedule });
+  return res.json(
+    { 
+      nextSemSeason: user.nextSemSeason,
+      nextSemYear: user.nextSemYear,
+      schedule: user.schedule,
+     });
 });
 
-// The actual generate schedule \/
 app.post("/api/generateSchedule", async (req, res) => 
 {
   const
   {
-    userId = 0,
     nextSemSeason = "",
+    nextSemYear = 0,
     completedClasses: localCompletedClasses = [],
     selectedElectives: localSelectedElectives = [],
     geps: localGeps = [],
     mathSciCount = 0
   } = req.body;
+  const userId = req.token.userId;
   let completedClasses = localCompletedClasses;
   let selectedElectives = localSelectedElectives;
   let initialCompletedClassesLength = completedClasses.length;
@@ -879,10 +802,15 @@ app.post("/api/generateSchedule", async (req, res) =>
     res.status(400);
     return res.json({ error: "Invalid request: no userId" });
   }
-  if (nextSemSeason == "") 
+  if (nextSemSeason === "") 
   {
     res.status(400);
     return res.json({ error: "Invalid request: no nextSemSeason" });
+  }
+  if (nextSemYear === 0)
+  {
+    res.status(400);
+    return res.json({ error: "Invalid request: no nextSemYear" });
   }
   if (selectedElectives.length === 0)
   {
@@ -900,7 +828,7 @@ app.post("/api/generateSchedule", async (req, res) =>
   // Grab user 
   let user = await User.findById(userId).lean();
   // Update the users completed classes
-  await User.findByIdAndUpdate(userId, { completedClasses: completedClasses });
+  await User.findByIdAndUpdate(userId, { completedClasses: completedClasses, nextSemYear: nextSemYear, nextSemSeason: nextSemSeason });
 
   // Grab list of core classes and nerf
   let coreClasses = await Class.find({ classType: "core" }).lean();
@@ -1665,3 +1593,97 @@ app.listen(port);
 // app.set('port', process.env.PORT || 5000);
 
 console.log(`I'm listening on ${port}`);
+
+// Edit Class
+// app.post("/api/editClass", async (req, res) => 
+// {
+//   const { userId, semesterNum, classId } = req.body;
+//   try 
+//   {
+//     if (semesterNum <= 0)
+//     {
+//       // 400 error, "invalid schedule or semester number", return
+//       res.status(400);
+//       return res.json({ error: "invalid schedule or semester number" });
+//     }
+//     const user = await User.findById(userId).lean();
+//     console.log("got user");
+
+//     // if the user does not exist
+//     if (!user) {
+//       // 400 error, "User not found", return
+//       res.status(400);
+//       return res.json({ error: "User not found" });
+//     }
+//     // SPOOKY GHOST oOoOoOoOoooooOOOO
+
+//     const classObj = await Class.findOne({ classId }).lean();
+//     console.log("got classObj, type of " + typeof classObj);
+//     console.log(classObj);
+
+//     // if class does not exist
+//     if (!classObj) {
+//       // 400 error, "No such class exists", return
+//       res.status(400);
+//       return res.json({ error: "No such class exists" });
+//     }
+
+//     // get prereqs of classId, store in array classPrereqs
+//     const classPrereqs = classObj.preReqs;
+
+//     // get postreqs of classId, store in array classPostreqs
+//     const classPostReqs = classObj.postReqs;
+
+//     // get class names of the classes in the semester specified, store in array semClasses
+//     let semClasses = user.schedule[semesterNum - 1].semester;
+
+//     // Check prereqs to classes in semester
+//     if (classPrereqs && (semesterNum > 1))
+//     {
+//       for (let i = 0; i < classPrereqs.length; i++)
+//       {
+//         for (let j = 0; j < semClasses.length; j++)
+//         {
+//           // if there are any matches in the arrays "classPrereqs" and "semClasses"
+//           if (classPrereqs[i] == semClasses[i])
+//           {
+//             // 400 error, "prerequisite not met", return
+//             res.status(400);
+//             return res.json({ error: "Prerequisite not met" });
+//           }
+//         }
+//       }
+//     }
+
+//     // Check postreqs of class against semester
+//     if (classPostReqs) {
+//       for (let i = 0; i < classPostreqs.length; i++) {
+//         for (let j = 0; j < semClasses.length; j++) {
+//           // if there are any matches in the arrays "classPrereqs" and "semClasses"
+//           if (classPostreqs[i] == semClasses[i]) {
+//             // 400 error, "postrequisite not met", return
+//             res.status(400);
+//             return res.json({ error: "Postrequisite not met" });
+//           }
+//         }
+//       }
+//     }
+
+//     // Move class from current semester to new semester --------------------------------------------
+//     await classSearchAndDestroy(userId, classId, user);
+//     await classAdd(userId, classId, semesterNum-1, user);
+  
+//     console.log("ping pong");
+
+//     res.status(200);
+//     return res.json({ error: "WOO IT DOES THE THING" });
+
+//     // otherwise, success!
+//     // users object -> schedule -> add class to semester -> check which semester had the class -> send it
+//   } catch {
+//     // catch
+//     // 500 error, "database fail?"
+//     res.status(500);
+//     return res.json({ error: "Yikes :(" });
+//   }
+// });

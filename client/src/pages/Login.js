@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import jwt from "jwt-decode";
 import { Link } from "react-router-dom";
 import logo from "../Images/ucf-logo.png";
 import "bootstrap/dist/css/bootstrap.css";
@@ -7,11 +6,11 @@ import validator from "validator";
 import "./styles.css";
 
 function Login() {
-  var loginEmail;
-  var loginPassword;
+  let loginEmail;
+  let loginPassword;
 
-  var validationEmail;
-  var validationPassword;
+  let validationEmail;
+  let validationPassword;
 
   const [emailMessage, setEmailMessage] = useState("");
   const [passwordMessage, setPasswordMessage] = useState("");
@@ -57,67 +56,59 @@ function Login() {
       return;
     }
 
-    var obj = { email: loginEmail.value, password: loginPassword.value };
-    var js = JSON.stringify(obj);
+    let obj = { email: loginEmail.value, password: loginPassword.value };
+    let js = JSON.stringify(obj);
 
     console.log(js);
 
-    try {
+    try
+    {
       fetch(
-        // process.env.REACT_APP_API_URL + "/api/verifyUser",
         process.env.REACT_APP_API_URL + "/api/login",
+        // "http://localhost:5000/api/login",
         {
           method: "POST",
           body: js,
           headers: { "Content-Type": "application/json" },
         }
-      ).then(async res=> {
-
+      ).then(async res=>
+      {
+        // RESPONSE: { schedule: Array, sName: String }
         let body = await res.json();
-
-        if (!body.verified) {
-          setMessage("user not verfied")
+        if (body.error)
+        {
+          setMessage(body.error);
+          if (body.error === "User not verified, email sent")
+          {
+            localStorage.clear();
+            let token = res.headers.get('X-Token');
+            localStorage.setItem('token', token);
+            window.location.href = "/verifyRegisterUser";
+          }
         }
-        else {
+        else
+        {
+          localStorage.clear();
           let token = res.headers.get('X-Token');
-
           localStorage.setItem('token', token);
-  
-          setMessage("You have logged in.");
+          setMessage("Welcome, " + body.sName + "!");
+          if (body.schedule.length === 0)
+          {
+            window.location.href = "/flowchart";
+          }
+          else
+          {
+            window.location.href = "/displaySchedule";
+          }
         }
       }).catch(err => {
         setMessage(err)
       });
 
-      // logout
+      // -- logout --
       // localStorage.removeItem("token")
+      // window.location.href = "/byebye" || "/sayounara" || "/";
 
-
-      // let resp = JSON.parse(await response.text());
-      // let resp = await response.json();
-
-      // console.log(response.headers.get("X-Token"));
-
-    
-
-
-      // var data = jwt(resp.data);
-
-      // console.log(data);
-
-      // var user = {
-      //   id: data.userId,
-      // };
-      // localStorage.setItem("user_data", JSON.stringify(user));
-
-      // if (data.error) {
-      //   setMessage(data.error);
-      //   if (data.error === "User not verified") {
-      //     setMessage(data.error);
-      //   }
-      // } else {
-      //   setMessage("You have logged in.");
-      // }
     } catch (e) {
       console.log(e.toString());
       return;
@@ -183,8 +174,8 @@ function Login() {
           Login
         </button>
         <div id="redirectRegister" className="fonts">
-          Don't have an acccount?
-          <span id="Register" style={{ textDecoration: "underline" }}>
+          Don't have an account?&nbsp;
+          <span id=" Register" style={{ textDecoration: "underline" }}>
             <Link to="/register">Register</Link>
           </span>
         </div>

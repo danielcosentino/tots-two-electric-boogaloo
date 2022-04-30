@@ -1,12 +1,35 @@
 .App {
   text-align: center;
-  font-family: "Courier New", monospace;
+  font-family: "Courier New", "monospace";
   width: 100%;
 }
 
 h1 {
   font-weight: normal;
   font-size: 42px;
+  font-family: "Gotham-Bold", "Courier New";
+}
+
+.react-flow__attribution {
+  display: none;
+}
+
+@font-face {
+  font-family: Gotham-Bold;
+  src: url("http://localhost:5000/static/Gotham-Bold.otf") format("opentype");
+}
+
+@font-face {
+  font-family: GothamMedium;
+  src: url("http://localhost:5000/static/GothamMedium.ttf") format("truetype");
+}
+
+.no-borderRadius {
+  /* border: 10px solid #FEDF8C; */
+  border-radius: 30px;
+  background-color: white;
+  height: 100%;
+  width: 90%;
 }
 
 .passwords {

@@ -2,14 +2,10 @@ import React, { useState } from "react";
 import logo from "../Images/ucf-logo.png";
 import { useHistory } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.css";
-import jwt from "jwt-decode";
 
 function VerifyRegisterUser() {
-  var verificationCode;
-  var validationVerificationCode;
-  let _user = localStorage.getItem("user_data");
-  let user = JSON.parse(_user);
-  console.log(user.id);
+  let verificationCode;
+  let validationVerificationCode;
 
   const [message, setMessage] = useState("");
 
@@ -37,36 +33,37 @@ function VerifyRegisterUser() {
       return;
     }
 
-    let obj = { userId: user.id, verifCode: verificationCode.value };
+    let obj = { verifCode: verificationCode.value };
     let js = JSON.stringify(obj);
 
     console.log(js);
 
-    try {
-      const response = await fetch(
+    try
+    {
+      fetch(
         process.env.REACT_APP_API_URL + "/api/verifyUser",
         {
           method: "POST",
           body: js,
-          headers: { "Content-type": "application/json" },
+          headers: { "Content-type": "application/json" , "Authorization": localStorage.getItem("token") },
         }
-      );
+      ).then(async res=>
+      {
+        let body = await res.json();
 
-      let data = JSON.parse(await response.text());
-
-      console.log(data);
-
-      if (data.error) {
-        setMessage(data.error);
-      } else {
-        let user = {
-          id: data.userId,
-        };
-        localStorage.clear();
-        localStorage.setItem("user_data", JSON.stringify(user));
-        console.log(JSON.parse(localStorage.getItem("user_data")).id);
-        window.location.href = "/";
-      }
+        if (res.status !== 200)
+        {
+          setMessage(body.error);
+        }
+        else
+        {
+          localStorage.clear();
+          window.location.href = "/login";
+        }
+      }).catch(err => 
+      {
+        setMessage(err)
+      });
     } catch (e) {
       console.log(e.toString());
       return;
@@ -112,6 +109,7 @@ function VerifyRegisterUser() {
           >
             Enter the 4 digit code you received in your email
           </label>
+          <br />
           <br />
           <input
             type="password"

@@ -1,5 +1,4 @@
 import React, { useState } from "react";
-import jwt from "jwt-decode";
 import logo from "../Images/ucf-logo.png";
 import { Link } from "react-router-dom";
 import "bootstrap/dist/css/bootstrap.css";
@@ -7,15 +6,18 @@ import validator from "validator";
 import "./styles.css";
 
 function Register() {
-  var registerEmail;
-  var registerPassword;
-  var registerConfirmPassword;
+  let registerEmail;
+  let registerPassword;
+  let registerConfirmPassword;
+  let registerName; 
 
-  var validationEmail;
-  var validationPassword;
-  var validationConfirmPassword;
+  let validationEmail;
+  let validationPassword;
+  let validationConfirmPassword;
 
   const [emailMessage, setEmailMessage] = useState("");
+  const [nameMessage, setNameMessage] = useState(""); 
+  const [name, setName] = useState(""); 
   const [passwordMessage, setPasswordMessage] = useState("");
   const [confirmPasswordMessage, setConfirmPasswordMessage] = useState("");
   const [message, setMessage] = useState("");
@@ -80,40 +82,47 @@ function Register() {
       return;
     }
 
-    var obj = {
+    let obj = {
       email: registerEmail.value,
       password: registerPassword.value,
+      sName: registerName.value
     };
-    var js = JSON.stringify(obj);
+    let js = JSON.stringify(obj);
 
     console.log(js);
 
-    try {
-      const response = await fetch(
+    try
+    {
+      fetch(
         process.env.REACT_APP_API_URL + "/api/register",
         {
           method: "POST",
           body: js,
           headers: { "Content-Type": "application/json" },
         }
-      );
-
-      var resp = JSON.parse(await response.text());
-
-      var data = jwt(resp.data);
-
-      if (data.error) {
-        setMessage(data.error);
-      } else {
-        var user = {
-          id: data.userId,
-        };
-        localStorage.clear();
-        localStorage.setItem("user_data", JSON.stringify(user));
-        setMessage("");
-        window.location.href = "/verifyRegisterUser";
-      }
-    } catch (e) {
+      ).then(async (res) =>
+      {
+        // RESPONSE: { schedule: Array, sName: String }
+        let body = await res.json();
+        if (body.error !== "User created, email sent")
+        {
+          setMessage(body.error);
+        }
+        else
+        {
+          localStorage.clear();
+          let token = res.headers.get('X-Token');
+          localStorage.setItem('token', token);
+          setMessage("");
+          window.location.href = "/verifyRegisterUser";
+        }
+      }).catch(err =>
+        {
+        setMessage(err)
+      });
+    }
+    catch (e)
+    {
       console.log(e.toString());
       return;
     }
@@ -129,6 +138,22 @@ function Register() {
       </h1>
       <h1 id="inner-title">Register</h1>
       <form onSubmit={doRegister}>
+      <label htmlFor="registerName" className="fonts">
+          Name
+        </label>
+        <br />
+        <input
+          type="text"
+          id="registerName"
+          className="border-4 w-25 p-3 inputs"
+          placeholder="Name"
+          ref={(c) => (registerName = c)}
+        />
+        <br />
+        <span id="nameMessageSpan" className="text-danger">
+          {nameMessage}
+        </span>
+        <br />
         <label htmlFor="registerEmail" className="fonts">
           Email
         </label>
@@ -186,8 +211,8 @@ function Register() {
           Register
         </button>
         <div id="redirectLogin" className="fonts">
-          Already have an acccount?
-          <span id="Login" style={{ textDecoration: "underline" }}>
+          Already have an account?&nbsp;
+          <span id=" Login" style={{ textDecoration: "underline" }}>
             <Link to="/">Login</Link>
           </span>
         </div>
