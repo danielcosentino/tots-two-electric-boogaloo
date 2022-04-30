@@ -74,6 +74,7 @@ function ResetPassword() {
           method: "POST",
           body: js,
           headers: { "Content-Type": "application/json", "Authorization": localStorage.getItem("token") },
+          mode: "cors"
         }
       ).then(async res=>
         {

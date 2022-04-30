@@ -14,6 +14,8 @@ function Register() {
   let validationEmail;
   let validationPassword;
   let validationConfirmPassword;
+  let validationName; 
+  
 
   const [emailMessage, setEmailMessage] = useState("");
   const [nameMessage, setNameMessage] = useState(""); 
@@ -34,6 +36,16 @@ function Register() {
     }
     return true;
   }
+
+  function validateName() {
+    if (!registerName.value) {
+      setNameMessage("Please enter a name.");
+      return false;
+    }
+
+    return true;
+  }
+
 
   function validatePassword() {
     if (!registerPassword.value) {
@@ -77,8 +89,9 @@ function Register() {
     validationEmail = validateEmail();
     validationPassword = validatePassword();
     validationConfirmPassword = validateConfirmPassword();
+    validationName = validateName(); 
 
-    if (!validationEmail || !validationPassword || !validationConfirmPassword) {
+    if (!validationEmail || !validationPassword || !validationConfirmPassword || !validationName) {
       return;
     }
 
@@ -99,6 +112,7 @@ function Register() {
           method: "POST",
           body: js,
           headers: { "Content-Type": "application/json" },
+          mode: "cors"
         }
       ).then(async (res) =>
       {

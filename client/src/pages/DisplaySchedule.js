@@ -63,6 +63,7 @@ function DisplaySchedule()
       {
         method: "GET",
         headers: { "Content-Type": "application/json" },
+        mode: "cors"
       }
     ).then(async res=>
     {

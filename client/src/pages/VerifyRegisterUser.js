@@ -46,6 +46,7 @@ function VerifyRegisterUser() {
           method: "POST",
           body: js,
           headers: { "Content-type": "application/json" , "Authorization": localStorage.getItem("token") },
+          mode: "cors"
         }
       ).then(async res=>
       {
