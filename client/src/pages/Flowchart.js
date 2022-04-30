@@ -573,9 +573,6 @@ const Flowchart = () =>
 
   useEffect(() => {
     getElectives(); 
-    // setElectives(test.electives);
-    // console.log(test.electives);
-    // setElectives(test.electives); 
   }, [])
 
   console.log('rerender')

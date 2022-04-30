@@ -16,12 +16,12 @@ h1 {
 
 @font-face {
   font-family: Gotham-Bold;
-  src: url("http://localhost:5000/static/Gotham-Bold.otf") format("opentype");
+  src: url("https://group1-tots-mern.herokuapp.com//static/Gotham-Bold.otf") format("opentype");
 }
 
 @font-face {
   font-family: GothamMedium;
-  src: url("http://localhost:5000/static/GothamMedium.ttf") format("truetype");
+  src: url("https://group1-tots-mern.herokuapp.com//static/GothamMedium.ttf") format("truetype");
 }
 
 .no-borderRadius {

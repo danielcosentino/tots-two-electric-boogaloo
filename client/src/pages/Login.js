@@ -64,7 +64,7 @@ function Login() {
     try
     {
       fetch(
-        process.env.REACT_APP_API_URL + "/api/login",
+        process.env.REACT_APP_API_URL + "api/login",
         // "http://localhost:5000/api/login",
         {
           method: "POST",
