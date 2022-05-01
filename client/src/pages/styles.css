@@ -28,8 +28,21 @@
   border: 0;
 }
 
+.table-header {
+  background-color: #242021;
+  color: white;
+}
+
+.table-row {
+  background-color: #949599;
+}
+
 #container {
   height: 90vh;
   padding: 10px;
   text-align: center;
+}
+
+#loginResult {
+  color: red;
 }

@@ -135,19 +135,19 @@ describe('Test Case For Login', () => {
   
       wrapper.find('input[id="loginEmail"]').simulate('change', {
         target: {
-          value: 'tots4331@gmail.com',
+          id: "loginEmail", value: "tots4331@gmail.com",
         },
       });
-      expect(wrapper.find('input[id="loginEmail"]').prop('value')).toBe(
-        'tots4331@gmail.com'
+      expect(wrapper.find('input[id="loginEmail"]').prop('value')).toEqual(
+        "tots4331@gmail.com"
       );
       wrapper.find('input[id="loginPassword"]').simulate('change', {
         target: {
-          value: '123456',
+          id: "loginPassword", value: "123456",
         },
       });
-      expect(wrapper.find('input[id="loginPassword"]').prop('value')).toBe(
-        '123456'
+      expect(wrapper.find('input[id="loginPassword"]').prop('value')).toEqual(
+        "123456"
       );
     });
 });
@@ -188,24 +188,42 @@ describe('Test Case For Register', () => {
   });*/
 
   it("register check data", () => {
-    wrapper = mount(<BrowserRouter><Register /></BrowserRouter>);
-    wrapper
-      .find('input[type="text"]')
-      .at(0)
-      .simulate("change", { target: { id: "registerName", value: "tater" } });
-    wrapper
-      .find('input[type="text"]')
-      .at(0)
-      .simulate("change", { target: { id: "registerEmail", value: "tots4331@gmail.com" } });
-    wrapper
-      .find('input[type="password"]')
-      .at(0)
-      .simulate("change", { target: { id: "registerPassword", value: "123456" } });
-      wrapper
-      .find('input[type="password"]')
-      .at(0)
-      .simulate("change", { target: { id: "registerConfirmPassword", value: "123456" } });
-    wrapper.find("button").simulate("click");
-    expect(wrapper.state("registered")).toBe(true);
+    wrapper = shallow(<Register />);
+  
+      /* if the simulated event value and the field value is same then the state is updating on event trigger */
+  
+      wrapper.find('input[id="registerName"]').simulate('change', {
+        target: {
+          id: "registerName", value: "tater",
+        },
+      });
+      expect(wrapper.find('input[id="registerName"]').prop('value')).toEqual(
+        "tater"
+      );
+      wrapper.find('input[id="registerEmail"]').simulate('change', {
+        target: {
+          id: "registerEmail", value: "tots4331@gmail.com",
+        },
+      });
+      expect(wrapper.find('input[id="registerEmail"]').prop('value')).toEqual(
+        "tots4331@gmail.com"
+      );
+      wrapper.find('input[id="registerPassword"]').simulate('change', {
+        target: {
+          id: "registerPassword", value: "123456",
+        },
+      });
+      expect(wrapper.find('input[id="registerPassword"]').prop('value')).toEqual(
+        "123456"
+      );
+      wrapper.find('input[id="registerConfirmPassword"]').simulate('change', {
+        target: {
+          id: "registerConfirmPassword", value: "123456",
+        },
+      });
+      expect(wrapper.find('input[id="registerConfirmPassword"]').prop('value')).toEqual(
+        "123456"
+      );
+    //wrapper = mount(<BrowserRouter><Register /></BrowserRouter>);
   });
 });

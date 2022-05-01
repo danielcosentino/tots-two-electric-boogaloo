@@ -2,7 +2,7 @@ const express = require("express");
 const path = require("path");
 const generatePassword = require("password-generator");
 const bodyParser = require("body-parser");
-const session = require("express-session");
+// const session = require("express-session");
 const MongoStore = require("connect-mongo");
 const mongoose = require("mongoose");
 const User = require("./model/user");
@@ -10,7 +10,7 @@ const Class = require("./model/class");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const sgMail = require("@sendgrid/mail");
-const cors = require("cors");
+// const cors = require("cors");
 const app = express();
 app.use(bodyParser.json());
 
@@ -34,7 +34,7 @@ mongoose.connect(process.env.MONGO_CONNECTION_STRING,
 });
 
 
-const whitelist = ["http://localhost:3000", "https://group1-tots-mern.herokuapp.com/"]
+// const whitelist = ["http://localhost:3000", "https://group1-tots-mern.herokuapp.com/"]
 // const corsOptions = {
 //   origin: function (origin, callback) {
 //     if (!origin || whitelist.indexOf(origin) !== -1) {
@@ -48,14 +48,31 @@ const whitelist = ["http://localhost:3000", "https://group1-tots-mern.herokuapp.
 // }
 // app.use(cors(corsOptions))
 
-app.use(function(req, res, next) {
-  res.header("Access-Control-Allow-Origin", '*');
-  res.header("Access-Control-Allow-Credentials", true);
-  res.header("Access-Control-Allow-Methods", 'GET,PUT,POST,PATCH,DELETE,OPTIONS');
-  res.header("Access-Control-Allow-Headers", 'Origin,X-Requested-With,Content-Type,Accept,content-type,application/json,Authorization,X-Token');
+// app.use(function(req, res, next) {
+//   res.header("Access-Control-Allow-Origin", '*');
+//   res.header("Access-Control-Allow-Credentials", 'true');
+//   res.header("Access-Control-Allow-Methods", 'GET,PUT,POST,PATCH,DELETE,OPTIONS');
+//   res.header("Access-Control-Allow-Headers", 'Origin,X-Requested-With,Content-Type,Accept,content-type,application/json,Authorization,X-Token');
+//   res.header("Access-Control-Expose-Headers", 'content-type,X-Token')
+//   next();
+// });
+
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*")
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin,X-Requested-With,Content-Type,Accept,content-type,Authorization,X-Token"
+  )
   res.header("Access-Control-Expose-Headers", 'content-type,X-Token')
-  next();
-});
+  if (req.method === "OPTIONS") {
+    res.header(
+      "Access-Control-Allow-Methods",
+      "POST, PUT, PATCH, GET, DELETE"
+    )
+    return res.status(200).json({})
+  }
+  next()
+})
 
 // app.use(cors({
 //   exposedHeaders: ['content-type', 'X-Token']
@@ -64,20 +81,20 @@ app.use(function(req, res, next) {
 
 app.use('/static', express.static('public'));
 
-app.use(
-  session(
-    {
-    secret: "foo",
-    store: MongoStore.create({
-      mongoUrl: process.env.MONGO_CONNECTION_STRING,
+// app.use(
+//   session(
+//     {
+//     secret: "foo",
+//     store: MongoStore.create({
+//       mongoUrl: process.env.MONGO_CONNECTION_STRING,
 
-      // time in seconds that session will expire
-      ttl: 30 * 60,
-    }),
-    resave: true,
-    saveUninitialized: true,
-  })
-);
+//       // time in seconds that session will expire
+//       ttl: 30 * 60,
+//     }),
+//     resave: true,
+//     saveUninitialized: true,
+//   })
+// );
 sgMail.setApiKey(process.env.REGISTER_AUTH_KEY);
 
 // generates a random verificationCode

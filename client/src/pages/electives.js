@@ -5,9 +5,11 @@ import MenuItem from '@mui/material/MenuItem';
 import FormControl from '@mui/material/FormControl';
 import Select from '@mui/material/Select';
 
+
 export default function Electives(props) {
 
   const MAXWIDTH = 300; 
+  const MAXHEIGHT = 50; 
  
   const handleChange1 = (event) => {
     props.setElec1(event.target.value);
@@ -40,6 +42,7 @@ export default function Electives(props) {
           onChange={handleChange1}
           sx={{
             maxWidth: MAXWIDTH,
+            maxHeight: MAXHEIGHT
           }}
         >
            {
@@ -69,6 +72,7 @@ export default function Electives(props) {
           onChange={handleChange2}
           sx={{
             maxWidth: MAXWIDTH,
+            maxHeight: MAXHEIGHT
           }}
         >
           {
@@ -98,6 +102,7 @@ export default function Electives(props) {
           onChange={handleChange3}
           sx={{
             maxWidth: MAXWIDTH,
+            maxHeight: MAXHEIGHT
           }}
         >
           {
@@ -127,6 +132,7 @@ export default function Electives(props) {
           onChange={handleChange4}
           sx={{
             maxWidth: MAXWIDTH,
+            maxHeight: MAXHEIGHT
           }}
         >
           {
@@ -156,6 +162,7 @@ export default function Electives(props) {
           onChange={handleChange5}
           sx={{
             maxWidth: MAXWIDTH,
+            maxHeight: MAXHEIGHT
           }}
         >
           {
@@ -185,6 +192,7 @@ export default function Electives(props) {
           onChange={handleChange6}
           sx={{
             maxWidth: MAXWIDTH,
+            maxHeight: MAXHEIGHT
           }}
         >
           {

@@ -9,11 +9,27 @@ import {
   BrowserRouter as Router,
   Route,
   Redirect,
-  Switch,
+  Switch
 } from "react-router-dom";
 import "./App.css";
 import Flowchart from "./pages/Flowchart.js";
 import DisplaySchedule from "./pages/DisplaySchedule.js";
+import jwt_decode from "jwt-decode";
+
+const ProtectedRoute = ({ children }) => {
+  try {
+    jwt_decode(localStorage.getItem('token'))
+
+    return children
+  } catch (err) {
+    return <Redirect to="/login" replace />;
+  }
+  
+    // if (!) {
+  // }
+
+  // return children;
+};
 
 function App() {
   return (
@@ -41,12 +57,12 @@ function App() {
           <Route path="/electives" exact>
             <Electives />
           </Route>
-          <Route path="/flowchart" exact>
+          <ProtectedRoute path="/flowchart" exact>
             <Flowchart />
-          </Route>
-          <Route path="/displaySchedule" exact>
+          </ProtectedRoute>
+          <ProtectedRoute path="/displaySchedule" exact>
             <DisplaySchedule/>
-          </Route>
+          </ProtectedRoute>
           <Redirect to="/" />
         </Switch>
       </Router>

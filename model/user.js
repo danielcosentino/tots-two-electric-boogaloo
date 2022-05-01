@@ -14,7 +14,7 @@ const semesterArray = new mongoose.Schema(
 
 const UserSchema = new mongoose.Schema(
 	{
-    sName: { type: String, required: true },
+    sName: { type: String },
 		email: { type: String, required: true, unique: true },
 		password: { type: String, required: true },
 		verified: { type: Boolean, required: true },

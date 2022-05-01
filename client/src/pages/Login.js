@@ -4,6 +4,7 @@ import logo from "../Images/ucf-logo.png";
 import "bootstrap/dist/css/bootstrap.css";
 import validator from "validator";
 import "./styles.css";
+import axios from 'axios';
 
 function Login() {
   let loginEmail;
@@ -59,61 +60,116 @@ function Login() {
     let obj = { email: loginEmail.value, password: loginPassword.value };
     let js = JSON.stringify(obj);
 
-    console.log(js);
+    console.log("This is the request", js);
 
-    try
-    {
-      fetch(
-        process.env.REACT_APP_API_URL + "/api/login",
-        // "http://localhost:5000/api/login",
-        {
-          method: "POST",
-          body: js,
-          headers: { "Content-Type": "application/json" },
-          mode: "cors"
-        }
-      ).then(async res=>
+
+    axios.post(`${process.env.REACT_APP_API_URL}/api/login`, obj).then(async (res) => {
+      console.log(res)
+      // RESPONSE: { schedule: Array, sName: String }
+      let body = res.data;
+      console.log("this is the body for login", body);
+      if (body.error)
       {
-        // RESPONSE: { schedule: Array, sName: String }
-        let body = await res.json();
-        if (body.error)
+        console.log(body.error);
+        setMessage(body.error);
+        if (body.error === "User not verified, email sent")
         {
-          setMessage(body.error);
-          if (body.error === "User not verified, email sent")
-          {
-            localStorage.clear();
-            let token = res.headers.get('X-Token');
-            localStorage.setItem('token', token);
-            window.location.href = "/verifyRegisterUser";
-          }
+          // localStorage.clear();
+          console.log(res.headers)
+          let token = res.headers['x-token'];
+          if (token == "null") alert('no token')
+          localStorage.setItem('token', token);
+          window.location.href = "/verifyRegisterUser";
+        }
+      }
+      else
+      {
+        // localStorage.clear();
+        console.log(localStorage)
+        // console.log(res.headers)
+        // res.headers.forEach(console.log);
+        let token = res.headers['x-token'];
+        if (token == "null") alert('no token')
+
+        localStorage.setItem('token', token);
+        setMessage("");
+        if (body.schedule.length === 0)
+        {
+          window.location.href = "/flowchart";
         }
         else
         {
-          localStorage.clear();
-          let token = res.headers.get('X-Token');
-          localStorage.setItem('token', token);
-          setMessage("Welcome, " + body.sName + "!");
-          if (body.schedule.length === 0)
-          {
-            window.location.href = "/flowchart";
-          }
-          else
-          {
-            window.location.href = "/displaySchedule";
-          }
+          window.location.href = "/displaySchedule";
         }
-      }).catch(err => {
-        setMessage(err)
-      });
+      }
+    }).catch(err => {
+      console.log(err)
+      setMessage(err)
+    })
 
-      // -- logout --
-      // localStorage.removeItem("token")
-      // window.location.href = "/byebye" || "/sayounara" || "/";
+    // try
+    // {
+    //   fetch(
+    //     process.env.REACT_APP_API_URL + "/api/login",
+    //     // "http://localhost:5000/api/login",
+    //     {
+    //       method: "POST",
+    //       body: js,
+    //       // mode: 'cors',
+    //       // credentials: 'include',
+    //       headers: { "Content-Type": "application/json" }
+    //     }
+    //   ).then(async res=>
+    //   {
+        // // RESPONSE: { schedule: Array, sName: String }
+        // let body = await res.json();
+        // console.log("this is the body for login", body);
+        // if (body.error)
+        // {
+        //   console.log(body.error);
+        //   setMessage(body.error);
+        //   if (body.error === "User not verified, email sent")
+        //   {
+        //     // localStorage.clear();
+        //     console.log(res.headers)
+        //     let token = res.headers.get('X-Token');
+        //     if (token == "null") alert('no token')
+        //     localStorage.setItem('token', token);
+        //     window.location.href = "/verifyRegisterUser";
+        //   }
+        // }
+        // else
+        // {
+        //   // localStorage.clear();
+        //   console.log(localStorage)
+        //   // console.log(res.headers)
+        //   res.headers.forEach(console.log);
+        //   let token = res.headers.get('X-Token');
+        //   if (token == "null") alert('no token')
 
-    } catch (e) {
-      console.log(e.toString());
-      return;
-    }
+        //   localStorage.setItem('token', token);
+        //   setMessage("");
+        //   if (body.schedule.length === 0)
+        //   {
+        //     window.location.href = "/flowchart";
+        //   }
+        //   else
+        //   {
+        //     window.location.href = "/displaySchedule";
+        //   }
+        // }
+    //   }).catch(err => {
+    //     setMessage(err)
+    //   });
+
+    //   // -- logout --
+    //   // localStorage.removeItem("token")
+    //   // window.location.href = "/byebye" || "/sayounara" || "/";
+
+    // } catch (e) {
+    //   console.log(e.toString());
+    //   return;
+    // }
   };
 
   return (
