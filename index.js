@@ -637,7 +637,7 @@ app.get("/api/getElectives", async (req, res) =>
 //  \_|  |_|  |_| \_/ \__,_|\__\___| \_| \_\___/ \__,_|\__\___||___/
 
 // token verification
-app.use((req, res, next) => 
+const verifyToken = (req, res, next) => 
 {
   let token = req.get("Authorization");
   try
@@ -652,9 +652,9 @@ app.use((req, res, next) =>
     return res.json({ error: "Unauthorized"});
   }
   next();
-});
+};
 
-app.post("/api/verifyUser", async (req, res) =>
+app.post("/api/verifyUser", verifyToken, async (req, res) =>
 {
   // yoink
   const { verifCode } = req.body;
@@ -705,7 +705,7 @@ app.post("/api/verifyUser", async (req, res) =>
   }
 });
 
-app.post("/api/resetPassword", async (req, res) =>
+app.post("/api/resetPassword", verifyToken, async (req, res) =>
 {
   // yoink
   const { password: plainTextPassword } = req.body;
@@ -759,7 +759,7 @@ app.post("/api/resetPassword", async (req, res) =>
   });
 });
 
-app.post("/api/verifyForgotPassword", async(req, res) =>
+app.post("/api/verifyForgotPassword", verifyToken, async(req, res) =>
 {
   // yoink
   const { verifCode } = req.body;
@@ -789,7 +789,7 @@ app.post("/api/verifyForgotPassword", async(req, res) =>
   return res.json({ error: "Correct verification code!" });
 });
 
-app.get("/api/getSchedule", async (req, res) =>
+app.get("/api/getSchedule", verifyToken, async (req, res) =>
 {
   const userId = req.token.userId;
 
@@ -822,7 +822,7 @@ app.get("/api/getSchedule", async (req, res) =>
      });
 });
 
-app.post("/api/generateSchedule", async (req, res) => 
+app.post("/api/generateSchedule", verifyToken, async (req, res) => 
 {
   const
   {
