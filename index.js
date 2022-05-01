@@ -35,18 +35,27 @@ mongoose.connect(process.env.MONGO_CONNECTION_STRING,
 
 
 const whitelist = ["http://localhost:3000", "https://group1-tots-mern.herokuapp.com/"]
-const corsOptions = {
-  origin: function (origin, callback) {
-    if (!origin || whitelist.indexOf(origin) !== -1) {
-      callback(null, true)
-    } else {
-      callback(new Error("Not allowed by CORS"))
-    }
-  },
-  credentials: true,
-  exposedHeaders: ['content-type', 'X-Token']
-}
-app.use(cors(corsOptions))
+// const corsOptions = {
+//   origin: function (origin, callback) {
+//     if (!origin || whitelist.indexOf(origin) !== -1) {
+//       callback(null, true)
+//     } else {
+//       callback(new Error("Not allowed by CORS"))
+//     }
+//   },
+//   credentials: true,
+//   exposedHeaders: ['content-type', 'X-Token']
+// }
+// app.use(cors(corsOptions))
+
+app.use(function(req, res, next) {
+  res.header("Access-Control-Allow-Origin", '*');
+  res.header("Access-Control-Allow-Credentials", true);
+  res.header("Access-Control-Allow-Methods", 'GET,PUT,POST,PATCH,DELETE,OPTIONS');
+  res.header("Access-Control-Allow-Headers", 'Origin,X-Requested-With,Content-Type,Accept,content-type,application/json,Authorization,X-Token');
+  res.header("Access-Control-Expose-Headers", 'content-type,X-Token')
+  next();
+});
 
 // app.use(cors({
 //   exposedHeaders: ['content-type', 'X-Token']
