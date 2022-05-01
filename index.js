@@ -48,15 +48,6 @@ mongoose.connect(process.env.MONGO_CONNECTION_STRING,
 // }
 // app.use(cors(corsOptions))
 
-// app.use(function(req, res, next) {
-//   res.header("Access-Control-Allow-Origin", '*');
-//   res.header("Access-Control-Allow-Credentials", 'true');
-//   res.header("Access-Control-Allow-Methods", 'GET,PUT,POST,PATCH,DELETE,OPTIONS');
-//   res.header("Access-Control-Allow-Headers", 'Origin,X-Requested-With,Content-Type,Accept,content-type,application/json,Authorization,X-Token');
-//   res.header("Access-Control-Expose-Headers", 'content-type,X-Token')
-//   next();
-// });
-
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*")
   res.header(
@@ -81,20 +72,6 @@ app.use((req, res, next) => {
 
 app.use('/static', express.static('public'));
 
-// app.use(
-//   session(
-//     {
-//     secret: "foo",
-//     store: MongoStore.create({
-//       mongoUrl: process.env.MONGO_CONNECTION_STRING,
-
-//       // time in seconds that session will expire
-//       ttl: 30 * 60,
-//     }),
-//     resave: true,
-//     saveUninitialized: true,
-//   })
-// );
 sgMail.setApiKey(process.env.REGISTER_AUTH_KEY);
 
 // generates a random verificationCode

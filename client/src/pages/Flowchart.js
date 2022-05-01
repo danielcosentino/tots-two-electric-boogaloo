@@ -12,7 +12,6 @@ import ReactFlow, {
   Position,
   ReactFlowProps,
 } from "react-flow-renderer";
-import "./nodeStyles.css";
 import { View, StyleSheet, Text } from "react-native";
 import { Grid } from "@mui/material";
 import OutlinedInput from "@mui/material/OutlinedInput";
@@ -22,10 +21,11 @@ import FormControl from "@mui/material/FormControl";
 import ListItemText from "@mui/material/ListItemText";
 import Select, { SelectChangeEvent } from "@mui/material/Select";
 import Checkbox from "@mui/material/Checkbox";
-import Electives from "./electives.js";
-import InfoPage from "./info.js";
 import Button from "@mui/material/Button";
 import Box from "@mui/material/Box";
+import Electives from "./electives.js";
+import InfoPage from "./info.js";
+import "./nodeStyles.css";
 // import GothamBold from "../fonts/Gotham-Bold.otf";
 // import GothamMedium from "../fonts/GothamMedium.ttf";
 
@@ -74,7 +74,7 @@ const white = {
   cursor: "pointer",
 };
 
-// 0-id, 1-name, 2-remaining input nodes, 3-node_postreqs, 4-type, 5-course names
+// 0-id, 1-name, 2-remaining input nodes, 3-node_prereqs, 4-node_postreqs, 5-type, 6-course names
 let classes = [
   {
     id: "0",
@@ -1155,7 +1155,6 @@ const Flowchart = () => {
       console.log(chosenElectives);
     } else {
       console.log("User didn't choose 6 electives");
-      // maybe send back error/popup?
       return;
     }
 
@@ -1170,7 +1169,18 @@ const Flowchart = () => {
       else
       {
         gepsCompleted.push(true);
+        completed.splice(completed.indexOf("GEP " + i), 1);
       }
+    }
+    if (completed.indexOf("ENC1101") !== -1)
+    {
+      completed.splice(completed.indexOf("ENC1101"), 1);
+      gepsCompleted[1] = true;
+    }
+    if (completed.indexOf("ENC1102") !== -1)
+    {
+      completed.splice(completed.indexOf("ENC1102"), 1);
+      gepsCompleted[2] = true;
     }
 
     console.log("geps: ", gepsCompleted);

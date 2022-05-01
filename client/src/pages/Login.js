@@ -5,6 +5,7 @@ import "bootstrap/dist/css/bootstrap.css";
 import validator from "validator";
 import "./styles.css";
 import axios from 'axios';
+import jwt_decode from 'jwt-decode'
 
 function Login() {
   let loginEmail;
@@ -16,6 +17,25 @@ function Login() {
   const [emailMessage, setEmailMessage] = useState("");
   const [passwordMessage, setPasswordMessage] = useState("");
   const [message, setMessage] = useState("");
+
+  // try {
+  //   jwt_decode(localStorage.getItem('token'))
+
+
+
+  //   if (body.schedule.length === 0)
+  //       {
+  //         window.location.href = "/flowchart";
+  //       }
+  //       else
+  //       {
+  //         window.location.href = "/displaySchedule";
+  //       }
+  // } catch (err) {
+
+  // }
+
+  
 
   function validateEmail(email) {
     if (!email.value) {

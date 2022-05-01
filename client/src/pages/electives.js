@@ -74,6 +74,7 @@ export default function Electives(props) {
             maxWidth: MAXWIDTH,
             maxHeight: MAXHEIGHT
           }}
+          margin={'normal'}
         >
           {
             props.electives ? props.electives.map((elective) => {
@@ -201,7 +202,7 @@ export default function Electives(props) {
                 props.elec3 === elective.classId || 
                 props.elec4 === elective.classId || 
                 props.elec5 === elective.classId ||
-                props.elec6 === elective.classId) {
+                props.elec2 === elective.classId) {
                 return (<MenuItem disabled value={elective.classId}>{elective.className}</MenuItem>);
               }
               
