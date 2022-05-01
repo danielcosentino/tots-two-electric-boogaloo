@@ -12,6 +12,7 @@ const jwt = require("jsonwebtoken");
 const sgMail = require("@sendgrid/mail");
 const cors = require("cors");
 const app = express();
+app.use(bodyParser.json());
 
 require("dotenv").config();
 
@@ -31,10 +32,26 @@ mongoose.connect(process.env.MONGO_CONNECTION_STRING,
   useNewUrlParser: true,
   useUnifiedTopology: true,
 });
-app.use(cors({
+
+
+const whitelist = ["http://localhost:3000", "https://group1-tots-mern.herokuapp.com/"]
+const corsOptions = {
+  origin: function (origin, callback) {
+    if (!origin || whitelist.indexOf(origin) !== -1) {
+      callback(null, true)
+    } else {
+      callback(new Error("Not allowed by CORS"))
+    }
+  },
+  credentials: true,
   exposedHeaders: ['content-type', 'X-Token']
-}));
-app.use(bodyParser.json());
+}
+app.use(cors(corsOptions))
+
+// app.use(cors({
+//   exposedHeaders: ['content-type', 'X-Token']
+// }));
+// app.use(bodyParser.json());
 
 app.use('/static', express.static('public'));
 
@@ -507,6 +524,12 @@ app.post("/api/forgotPasswordEmail", async (req, res) =>
 
   let user = await User.findOne({ email : email }).lean();
 
+  if (!user)
+  {
+    res.status(400);
+    return res.json({ error: "User does not exist" });
+  }
+
   if (user.verified === false)
   {
     res.status(400);
@@ -758,7 +781,7 @@ app.get("/api/getSchedule", async (req, res) =>
     return res.json({ data: "User not found" });
   }
 
-  if (!user.schedule)
+  if (!user.schedule || user.schedule.length === 0)
   {
     res.status(500);
     return res.json({ data: "Schedule not found" });
